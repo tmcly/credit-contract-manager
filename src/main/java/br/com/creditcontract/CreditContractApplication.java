@@ -1,13 +1,13 @@
-package br.com.contratocredito;
+package br.com.creditcontract;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class ContratoCreditoApplication {
+public class CreditContractApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.run(ContratoCreditoApplication.class, args);
+		SpringApplication.run(CreditContractApplication.class, args);
 	}
 
 }

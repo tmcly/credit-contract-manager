@@ -8,10 +8,10 @@
 		<version>3.5.3</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
-	<groupId>br.com.contratocredito</groupId>
-	<artifactId>contrato-credito</artifactId>
+	<groupId>br.com.creditcontract</groupId>
+	<artifactId>credit-contract-manager</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>contrato-credito</name>
+	<name>credit-contract-manager</name>
 	<description/>
 	<url/>
 	<licenses>

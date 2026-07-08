@@ -1,93 +1,99 @@
-# Contrato de Crédito 🏦
+# Credit Contract Manager 🏦
 
-Sistema de gestão de contratos de crédito (criação, cancelamento, bloqueio,
-reanálise). Projeto em construção — iniciado do zero como estudo de
-**Java 21 + Spring Boot 3** com foco em boas práticas.
+Credit contract management system (create, cancel, block, reanalyze).
+Built from scratch as a study project focused on **Java 21 + Spring Boot 3**
+with strong emphasis on software design best practices.
 
 ## Stack
 
-| Camada | Tecnologia |
-|--------|-----------|
-| Linguagem | Java 21 (LTS) |
+| Layer | Technology |
+|-------|-----------|
+| Language | Java 21 (LTS) |
 | Framework | Spring Boot 3.5.x |
 | Build | Maven |
-| Banco | ⚠️ AINDA NÃO DEFINIDO (SQL vs NoSQL) — decisão adiada |
+| Database | ⚠️ NOT YET DEFINED (SQL vs NoSQL) — decision deferred |
 
-## Arquitetura (Clean Architecture + DDD + SOLID)
+## Architecture (Clean Architecture + DDD + SOLID)
 
-Dependência aponta para DENTRO. O domínio não conhece nenhum framework.
+Dependencies point inwards. The domain knows nothing about any framework.
 
 ```
                          ┌─────────────────────────────┐
         HTTP (REST)      │     INTERFACES / ADAPTERS   │
-   ────────────────────▶ │  br.com.contratocredito.    │
+   ────────────────────▶ │  br.com.creditcontract.     │
                          │        interfaces           │
                          │  • HealthCheckController     │
-                         │  (traduz JSON -> application)│
+                         │  (translates JSON -> app)    │
                          └──────────────┬──────────────┘
                                         │ depends on
                                         ▼
                          ┌─────────────────────────────┐
-      CASOS DE USO       │       APPLICATION           │
-                         │  br.com.contratocredito.    │
+      USE CASES         │       APPLICATION           │
+                         │  br.com.creditcontract.     │
                          │       application           │
                          │  • *UseCase (S - SOLID)      │
-                         │  • orquestra o domínio       │
-                         │  • depende só de ABSTRAÇÕES │
+                         │  • orchestrates the domain   │
+                         │  • depends only on ABSTRACTIONS │
                          └──────────────┬──────────────┘
                                         │ depends on
                                         ▼
                          ┌─────────────────────────────┐
-      REGRAS DE NEGÓCIO  │         DOMAIN (DDD)        │
-                         │  br.com.contratocredito.    │
+      BUSINESS RULES     │         DOMAIN (DDD)        │
+                         │  br.com.creditcontract.     │
                          │         domain              │
-                         │  • entidades / agregados    │
-                         │  • value objects            │
-                         │  • ports (interfaces)       │
-                         │  • NÃO importa Spring/JPA   │
+                         │  • entity/   (CreditContract)│
+                         │  • valueobject/ (ContractId, │
+                         │      MonetaryAmount, ...)    │
+                         │  • enumeration/ (ContractStatus) │
+                         │  • NO Spring/JPA imports     │
                          └─────────────────────────────┘
                                         ▲
                                         │ implements (ports)
                                         │
                          ┌─────────────────────────────┐
-   IMPLEMENTAÇÕES REAIS  │      INFRASTRUCTURE         │
-                         │  br.com.contratocredito.    │
-                         │      infrastructure         │
-                         │  • persistência (adapter)   │
-                         │  • configs Spring           │
-                         │  • banco (quando definido)  │
+   CONCRETE IMPL        │      INFRASTRUCTURE         │
+                         │  br.com.creditcontract.    │
+                         │      infrastructure        │
+                         │  • persistence (adapter)    │
+                         │  • Spring config            │
+                         │  • database (when defined)  │
                          └─────────────────────────────┘
 ```
 
-## Estrutura de pacotes
+## Package structure
 
 ```
-src/main/java/br/com/contratocredito/
-├── ContratoCreditoApplication.java   # main (Spring Boot)
-├── domain/                           # regras de negócio (DDD)
-├── application/                      # use cases (casos de uso)
-├── infrastructure/                   # adapters (persistência, config)
-└── interfaces/                       # entrada (REST controllers)
+src/main/java/br/com/creditcontract/
+├── CreditContractApplication.java     # main (Spring Boot)
+├── domain/
+│   ├── entity/                        # aggregates / entities (CreditContract)
+│   ├── valueobject/                   # immutable value types
+│   └── enumeration/                   # domain enums (ContractStatus)
+├── application/                       # use cases (to be implemented)
+├── infrastructure/                    # adapters (persistence, config)
+└── interfaces/                        # entry points (REST controllers)
 ```
 
-## Estado atual
+## Current state
 
-- ✅ Scaffold funcional (Spring Boot + Web + Actuator)
-- ✅ Endpoint `GET /health` -> `{ "status": "UP" }`
-- ✅ Endpoint nativo `GET /actuator/health`
-- ⏳ Domínio: vazio (a ser desenhado em conjunto)
-- ⏳ Banco de dados: não definido
+- ✅ Scaffold functional (Spring Boot + Web + Actuator)
+- ✅ Domain modeled: `CreditContract` aggregate + value objects + `ContractStatus`
+- ✅ Unit tests passing (state transitions, invariants, versioning)
+- ✅ Docker: `Dockerfile` (multi-stage) + `docker-compose.yml`
+- ⏳ Use cases: not yet implemented
+- ⏳ Database: not defined
 
-## Como rodar
+## Run it
 
+### With Maven
 ```bash
-# compilar
 ./mvnw clean package
-
-# rodar
 ./mvnw spring-boot:run
-# ou
-java -jar target/contrato-credito-0.0.1-SNAPSHOT.jar
+```
+
+### With Docker
+```bash
+docker compose up --build
 ```
 
 ## Healthcheck
@@ -95,7 +101,4 @@ java -jar target/contrato-credito-0.0.1-SNAPSHOT.jar
 ```bash
 curl http://localhost:8080/health
 # {"status":"UP"}
-
-curl http://localhost:8080/actuator/health
-# {"status":"UP", ...}
 ```
