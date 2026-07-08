@@ -1,4 +1,4 @@
-package br.com.contratocredito.interfaces;
+package br.com.creditcontract.interfaces;
 
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -6,8 +6,8 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Map;
 
 /**
- * Único endpoint da aplicação neste estágio inicial.
- * Healthcheck simples para saber se a aplicação está no ar.
+ * Only endpoint of the application at this early stage.
+ * Simple healthcheck to know whether the app is up.
  *
  * GET /health  ->  { "status": "UP" }
  */
