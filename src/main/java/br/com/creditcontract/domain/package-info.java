@@ -13,6 +13,6 @@
  * Sub-packages:
  *   - entity/        : aggregate roots and entities (CreditContract)
  *   - valueobject/   : immutable value types (ContractId, MonetaryAmount, ...)
- *   - enumeration/   : domain enumerations (ContractStatus)
+ *   - enums/         : domain enumerations (ContractStatus)
  */
 package br.com.creditcontract.domain;

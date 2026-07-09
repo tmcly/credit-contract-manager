@@ -1,4 +1,4 @@
-package br.com.creditcontract.domain.enumeration;
+package br.com.creditcontract.domain.enums;
 
 /**
  * Lifecycle states of a credit contract (state machine).
