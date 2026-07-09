@@ -3,6 +3,7 @@ package br.com.creditcontract.domain.entity;
 import br.com.creditcontract.domain.enumeration.ContractStatus;
 import br.com.creditcontract.domain.valueobject.Address;
 import br.com.creditcontract.domain.valueobject.Client;
+import br.com.creditcontract.domain.valueobject.ClientId;
 import br.com.creditcontract.domain.valueobject.ContractId;
 import br.com.creditcontract.domain.valueobject.MonetaryAmount;
 
@@ -30,6 +31,7 @@ public class CreditContract {
 
 	private final ContractId id;
 	private final String contractNumber;
+	private final ClientId clientId;
 	private final Client client;
 	private ContractStatus status;
 	private final MonetaryAmount creditLimit;
@@ -44,6 +46,7 @@ public class CreditContract {
 	private CreditContract(Builder builder) {
 		this.id = builder.id;
 		this.contractNumber = builder.contractNumber;
+		this.clientId = Objects.requireNonNull(builder.clientId, "clientId is required");
 		this.client = builder.client;
 		this.status = Objects.requireNonNull(builder.status, "initial status cannot be null");
 		this.creditLimit = builder.creditLimit;
@@ -55,12 +58,14 @@ public class CreditContract {
 
 	/** Factory: creates a brand new contract in its initial state. */
 	public static CreditContract create(ContractId id,
+	                                     ClientId clientId,
 	                                     String contractNumber,
 	                                     Client client,
 	                                     MonetaryAmount creditLimit,
 	                                     LocalDateTime creditAnalysisDate) {
 		return builder()
 				.id(id)
+				.clientId(clientId)
 				.contractNumber(contractNumber)
 				.client(client)
 				.creditLimit(creditLimit)
@@ -103,6 +108,7 @@ public class CreditContract {
 
 	public ContractId getId() { return id; }
 	public String getContractNumber() { return contractNumber; }
+	public ClientId getClientId() { return clientId; }
 	public Client getClient() { return client; }
 	public ContractStatus getStatus() { return status; }
 	public MonetaryAmount getCreditLimit() { return creditLimit; }
@@ -120,6 +126,7 @@ public class CreditContract {
 	public static final class Builder {
 		private ContractId id;
 		private String contractNumber;
+		private ClientId clientId;
 		private Client client;
 		private ContractStatus status;
 		private MonetaryAmount creditLimit;
@@ -128,6 +135,7 @@ public class CreditContract {
 
 		public Builder id(ContractId id) { this.id = id; return this; }
 		public Builder contractNumber(String contractNumber) { this.contractNumber = contractNumber; return this; }
+		public Builder clientId(ClientId clientId) { this.clientId = clientId; return this; }
 		public Builder client(Client client) { this.client = client; return this; }
 		public Builder status(ContractStatus status) { this.status = status; return this; }
 		public Builder creditLimit(MonetaryAmount creditLimit) { this.creditLimit = creditLimit; return this; }
@@ -137,6 +145,7 @@ public class CreditContract {
 		public CreditContract build() {
 			Objects.requireNonNull(id, "id is required");
 			Objects.requireNonNull(contractNumber, "contractNumber is required");
+			Objects.requireNonNull(clientId, "clientId is required");
 			Objects.requireNonNull(client, "client is required");
 			Objects.requireNonNull(creditLimit, "creditLimit is required");
 			Objects.requireNonNull(creditAnalysisDate, "creditAnalysisDate is required");

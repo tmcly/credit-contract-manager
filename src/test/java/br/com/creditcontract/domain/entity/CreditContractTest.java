@@ -3,6 +3,7 @@ package br.com.creditcontract.domain.entity;
 import br.com.creditcontract.domain.enumeration.ContractStatus;
 import br.com.creditcontract.domain.valueobject.Address;
 import br.com.creditcontract.domain.valueobject.Client;
+import br.com.creditcontract.domain.valueobject.ClientId;
 import br.com.creditcontract.domain.valueobject.ContractId;
 import br.com.creditcontract.domain.valueobject.MonetaryAmount;
 import br.com.creditcontract.domain.valueobject.ZipCode;
@@ -18,6 +19,7 @@ class CreditContractTest {
 	private CreditContract sample() {
 		return CreditContract.create(
 				ContractId.generate(),
+				ClientId.generate(),
 				"CT-2026-000001",
 				new Client("Maria Silva",
 						new Address("PR", "Curitiba", "Rua das Flores", "123", new ZipCode("80010-000"))),
