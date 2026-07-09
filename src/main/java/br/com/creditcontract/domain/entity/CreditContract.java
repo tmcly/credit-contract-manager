@@ -1,6 +1,6 @@
 package br.com.creditcontract.domain.entity;
 
-import br.com.creditcontract.domain.enum.ContractStatus;
+import br.com.creditcontract.domain.enums.ContractStatus;
 import br.com.creditcontract.domain.valueobject.Address;
 import br.com.creditcontract.domain.valueobject.Client;
 import br.com.creditcontract.domain.valueobject.ContractId;
