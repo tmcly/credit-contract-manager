@@ -43,7 +43,9 @@ br.com.creditcontract
 └── adapter
     ├── in/rest
     └── out
-        ├── persistence/jpa
+        ├── persistence
+        │   ├── jpa
+        │   └── postgres
         └── stub
 ```
 
@@ -142,8 +144,11 @@ sequenceDiagram
 ```
 
 The synchronous flow is the current implementation, not the final event-driven
-target. The database still uses a stub-generated contract number, and client
-and credit-limit integrations are local substitutes.
+target. Contract numbers come from a PostgreSQL sequence, while client and
+credit-limit integrations remain local substitutes. Sequence gaps are valid
+after rollbacks because uniqueness is required but gapless numbering is not.
+The Flyway upgrade aligns the sequence with numbers previously issued by the
+local stub before PostgreSQL becomes the active generator.
 
 ## Target evolution
 

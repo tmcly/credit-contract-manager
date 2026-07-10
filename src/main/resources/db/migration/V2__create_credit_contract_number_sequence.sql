@@ -1,0 +1,7 @@
+CREATE SEQUENCE credit_contract_number_seq
+    AS BIGINT
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;

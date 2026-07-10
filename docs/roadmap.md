@@ -21,10 +21,13 @@ Already implemented:
 - Flyway-managed schema;
 - client snapshot stored with the contract;
 - generic status-transition history;
+- restart-safe contract numbers backed by a PostgreSQL sequence;
 - Docker Compose local environment;
 - PostgreSQL integration tests with Testcontainers.
 
-## Phase 1: Generate contract numbers with PostgreSQL
+## Phase 1: Generate contract numbers with PostgreSQL ✅
+
+Status: completed.
 
 Suggested branch:
 

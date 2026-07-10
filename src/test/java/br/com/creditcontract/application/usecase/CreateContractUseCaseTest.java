@@ -43,7 +43,7 @@ class CreateContractUseCaseTest {
 
 	private static final DocumentNumber CPF = DocumentNumber.from("52998224725");
 	private static final Client STUB_CLIENT = new Client(
-			DOCUMENT,
+			CPF,
 			"Alice Oliveira",
 			new Address("SP", "São Paulo", "Av. Paulista", "1000", new ZipCode("01310-000"))
 	);
