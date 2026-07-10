@@ -1,6 +1,6 @@
 # ADR 004: Transactional Outbox and RabbitMQ-First Event Architecture
 
-- Status: Accepted; implementation pending
+- Status: Accepted; partially implemented
 - Date: 2026-07-10
 
 ## Context
@@ -61,3 +61,11 @@ consumer ecosystem becomes a concrete requirement.
 - Microservices are not required. The project may remain a modular monolith
   while using durable asynchronous boundaries.
 - Exactly-once delivery is not claimed end to end.
+
+## Implementation status
+
+The first increment is implemented: `CreditContract` records the versioned
+`CreditContractCreated` event, and PostgreSQL stores it in `outbox_events` in
+the same transaction as the aggregate. JSON serialization and outbox storage
+remain in outbound adapters. The RabbitMQ relay, publisher confirms, retries,
+and dead-letter topology remain pending for the next roadmap phases.

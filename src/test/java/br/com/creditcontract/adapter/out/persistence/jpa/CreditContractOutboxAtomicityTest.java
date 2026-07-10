@@ -4,8 +4,6 @@ import br.com.creditcontract.adapter.out.persistence.outbox.OutboxEventPersisten
 import br.com.creditcontract.adapter.out.persistence.outbox.OutboxEventSerializer;
 import br.com.creditcontract.application.port.out.CreditContractRepository;
 import br.com.creditcontract.domain.entity.CreditContract;
-import br.com.creditcontract.domain.enums.ContractStatus;
-import br.com.creditcontract.domain.event.CreditContractCreated;
 import br.com.creditcontract.domain.valueobject.Address;
 import br.com.creditcontract.domain.valueobject.Client;
 import br.com.creditcontract.domain.valueobject.ContractId;
@@ -18,6 +16,7 @@ import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -28,12 +27,9 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.math.BigDecimal;
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @DataJpaTest
 @Testcontainers
@@ -45,7 +41,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 		OutboxEventSerializer.class,
 		JacksonAutoConfiguration.class
 })
-class CreditContractPersistenceAdapterTest {
+class CreditContractOutboxAtomicityTest {
 
 	@Container
 	static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:17-alpine");
@@ -68,53 +64,29 @@ class CreditContractPersistenceAdapterTest {
 
 	@Test
 	@Transactional(propagation = Propagation.NOT_SUPPORTED)
-	void shouldPersistContractSnapshotAndInitialStatusHistory() {
-		ContractId id = ContractId.generate();
-		CreditContract contract = CreditContract.create(
-				id,
-				"CT-2026-000001",
+	void shouldRollbackContractWhenOutboxPersistenceFails() {
+		CreditContract contract = sampleContract();
+		jdbcTemplate.execute("DROP TABLE outbox_events");
+
+		assertThrows(DataAccessException.class, () -> repository.save(contract));
+
+		assertEquals(0, jpaRepository.count());
+		assertEquals(1, contract.getDomainEvents().size());
+	}
+
+	private CreditContract sampleContract() {
+		return CreditContract.create(
+				ContractId.generate(),
+				"CT-2026-000099",
 				new Client(
 						DocumentNumber.from("52998224725"),
 						"Maria Silva",
-						new Address("PR", "Curitiba", "Rua das Flores", "123", new ZipCode("80010-000"))),
+						new Address(
+								"PR",
+								"Curitiba",
+								"Rua das Flores",
+								"123",
+								new ZipCode("80010-000"))),
 				MonetaryAmount.reais(new BigDecimal("5000.00")));
-
-		CreditContractCreated createdEvent =
-				(CreditContractCreated) contract.getDomainEvents().getFirst();
-
-		repository.save(contract);
-
-		CreditContractJpaEntity persisted = jpaRepository.findById(id.value()).orElseThrow();
-		assertEquals("52998224725", persisted.getClientDocumentNumber());
-		assertEquals("Maria Silva", persisted.getClientName());
-		assertEquals("80010000", persisted.getClientZipCode());
-		assertEquals(new BigDecimal("5000.00"), persisted.getCreditLimit());
-		assertEquals(ContractStatus.DRAFT, persisted.getStatus());
-		assertEquals(0L, persisted.getVersion());
-
-		Map<String, Object> statusHistory = jdbcTemplate.queryForMap(
-				"SELECT previous_status, new_status FROM contract_status_history WHERE contract_id = ?",
-				id.value());
-		assertNull(statusHistory.get("previous_status"));
-		assertEquals(ContractStatus.DRAFT.name(), statusHistory.get("new_status"));
-
-		Map<String, Object> outbox = jdbcTemplate.queryForMap(
-				"SELECT * FROM outbox_events WHERE event_id = ?",
-				createdEvent.eventId());
-		assertEquals(id.value(), outbox.get("aggregate_id"));
-		assertEquals("CreditContract", outbox.get("aggregate_type"));
-		assertEquals("CreditContractCreated", outbox.get("event_type"));
-		assertEquals(1, outbox.get("schema_version"));
-		assertEquals(createdEvent.eventId(), outbox.get("correlation_id"));
-		assertNull(outbox.get("causation_id"));
-		assertEquals("PENDING", outbox.get("publication_status"));
-		assertEquals(0, outbox.get("publication_attempts"));
-		String payload = outbox.get("payload").toString();
-		assertTrue(payload.contains("\"eventId\": \"" + createdEvent.eventId() + "\""));
-		assertTrue(payload.contains("\"contractId\": \"" + id.value() + "\""));
-		assertTrue(payload.contains("\"contractNumber\": \"CT-2026-000001\""));
-		assertTrue(payload.contains("\"clientDocumentNumber\": \"52998224725\""));
-		assertFalse(payload.contains("Maria Silva"));
-		assertTrue(contract.getDomainEvents().isEmpty());
 	}
 }

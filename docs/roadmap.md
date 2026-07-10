@@ -23,6 +23,8 @@ Already implemented:
 - generic status-transition history;
 - restart-safe contract numbers backed by a PostgreSQL sequence;
 - deterministic Brazilian client snapshots derived from the input CPF;
+- versioned `CreditContractCreated` domain events;
+- atomic PostgreSQL transactional outbox persistence;
 - Docker Compose local environment;
 - PostgreSQL integration tests with Testcontainers.
 
@@ -99,7 +101,9 @@ introducing flaky or irreproducible behavior.
 - Generated CEP and address fields satisfy domain validation.
 - Tests remain deterministic across machines and runs.
 
-## Phase 3: Add domain events and transactional outbox
+## Phase 3: Add domain events and transactional outbox ✅
+
+Status: completed.
 
 Suggested branch:
 

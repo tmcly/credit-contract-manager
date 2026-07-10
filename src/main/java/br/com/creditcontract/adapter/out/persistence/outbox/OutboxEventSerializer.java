@@ -1,0 +1,45 @@
+package br.com.creditcontract.adapter.out.persistence.outbox;
+
+import br.com.creditcontract.domain.event.CreditContractCreated;
+import br.com.creditcontract.domain.event.DomainEvent;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.springframework.stereotype.Component;
+
+import java.util.Objects;
+
+/** Maps domain events to stable, versioned JSON integration payloads. */
+@Component
+public class OutboxEventSerializer {
+
+	private final ObjectMapper objectMapper;
+
+	public OutboxEventSerializer(ObjectMapper objectMapper) {
+		this.objectMapper = Objects.requireNonNull(objectMapper);
+	}
+
+	String serialize(DomainEvent event) {
+		if (event instanceof CreditContractCreated created) {
+			return serialize(created);
+		}
+		throw new IllegalArgumentException("unsupported domain event: " + event.eventType());
+	}
+
+	private String serialize(CreditContractCreated event) {
+		ObjectNode payload = objectMapper.createObjectNode();
+		payload.put("eventId", event.eventId().toString());
+		payload.put("contractId", event.aggregateId().value().toString());
+		payload.put("contractNumber", event.contractNumber());
+		payload.put("clientDocumentNumber", event.clientDocumentNumber().value());
+		payload.put("occurredAt", event.occurredAt().toString());
+
+		try {
+			return objectMapper.writeValueAsString(payload);
+		} catch (JsonProcessingException exception) {
+			throw new IllegalStateException(
+					"could not serialize event " + event.eventId(),
+					exception);
+		}
+	}
+}

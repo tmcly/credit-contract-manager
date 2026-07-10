@@ -8,6 +8,7 @@ import br.com.creditcontract.application.port.out.CreditLimitProvider;
 import br.com.creditcontract.application.port.out.CreditContractRepository;
 import br.com.creditcontract.domain.entity.CreditContract;
 import br.com.creditcontract.domain.enums.ContractStatus;
+import br.com.creditcontract.domain.event.CreditContractCreated;
 import br.com.creditcontract.domain.valueobject.Address;
 import br.com.creditcontract.domain.valueobject.Client;
 import br.com.creditcontract.domain.valueobject.DocumentNumber;
@@ -73,6 +74,9 @@ class CreateContractUseCaseTest {
 		assertEquals(new BigDecimal("5000.00"), contract.getCreditLimit().amount());
 		assertEquals(0L, contract.getVersion());
 		assertNotNull(contract.getCreatedAt());
+		assertEquals(1, contract.getDomainEvents().size());
+		assertEquals(CreditContractCreated.EVENT_TYPE,
+				contract.getDomainEvents().getFirst().eventType());
 		verify(creditContractRepository).save(contract);
 	}
 

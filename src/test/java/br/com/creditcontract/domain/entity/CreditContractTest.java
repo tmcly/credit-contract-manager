@@ -1,6 +1,7 @@
 package br.com.creditcontract.domain.entity;
 
 import br.com.creditcontract.domain.enums.ContractStatus;
+import br.com.creditcontract.domain.event.CreditContractCreated;
 import br.com.creditcontract.domain.valueobject.Address;
 import br.com.creditcontract.domain.valueobject.Client;
 import br.com.creditcontract.domain.valueobject.ContractId;
@@ -36,6 +37,17 @@ class CreditContractTest {
 		assertEquals(1, contract.getStatusHistory().size());
 		assertNull(contract.getStatusHistory().getFirst().previousStatus());
 		assertEquals(ContractStatus.DRAFT, contract.getStatusHistory().getFirst().newStatus());
+		assertEquals(1, contract.getDomainEvents().size());
+		CreditContractCreated event = (CreditContractCreated) contract.getDomainEvents().getFirst();
+		assertEquals(contract.getId(), event.aggregateId());
+		assertEquals(contract.getContractNumber(), event.contractNumber());
+		assertEquals(contract.getClient().documentNumber(), event.clientDocumentNumber());
+		assertEquals(contract.getCreatedAt(), event.occurredAt());
+		assertEquals(event.eventId(), event.correlationId());
+		assertNull(event.causationId());
+		assertEquals("CreditContract", event.aggregateType());
+		assertEquals("CreditContractCreated", event.eventType());
+		assertEquals(1, event.schemaVersion());
 	}
 
 	@Test
