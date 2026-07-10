@@ -43,14 +43,14 @@ public class CreateContractUseCase {
 	/**
 	 * Creates a new credit contract for the given client.
 	 *
-	 * @param input the document number of the client
+	 * @param input the CPF of the client
 	 * @return the newly created contract aggregate
 	 */
 	public CreditContract execute(CreateContractInput input) {
 		Objects.requireNonNull(input, "input cannot be null");
 
-		Client client = clientDataProvider.findByDocument(input.documentNumber());
-		MonetaryAmount creditLimit = creditLimitProvider.getLimitFor(input.documentNumber());
+		Client client = clientDataProvider.findByCpf(input.cpf());
+		MonetaryAmount creditLimit = creditLimitProvider.getLimitFor(input.cpf());
 		String contractNumber = contractNumberGenerator.next();
 		ContractId contractId = ContractId.generate();
 

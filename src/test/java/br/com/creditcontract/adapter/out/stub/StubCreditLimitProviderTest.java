@@ -1,6 +1,6 @@
 package br.com.creditcontract.adapter.out.stub;
 
-import br.com.creditcontract.domain.valueobject.DocumentNumber;
+import br.com.creditcontract.domain.valueobject.Cpf;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -26,13 +26,13 @@ class StubCreditLimitProviderTest {
 			"10000000108, 10000.00",
 			"10000000019, 15000.00"
 	})
-	void shouldAssignLimitAccordingToFinalDocumentDigit(String documentNumber, BigDecimal expectedLimit) {
-		assertEquals(expectedLimit, provider.getLimitFor(DocumentNumber.from(documentNumber)).amount());
+	void shouldAssignLimitAccordingToFinalCpfDigit(String cpf, BigDecimal expectedLimit) {
+		assertEquals(expectedLimit, provider.getLimitFor(Cpf.from(cpf)).amount());
 	}
 
 	@Test
-	void shouldSupportFormattedDocumentNumber() {
+	void shouldSupportFormattedCpf() {
 		assertEquals(new BigDecimal("5000.00"),
-				provider.getLimitFor(DocumentNumber.from("529.982.247-25")).amount());
+				provider.getLimitFor(Cpf.from("529.982.247-25")).amount());
 	}
 }

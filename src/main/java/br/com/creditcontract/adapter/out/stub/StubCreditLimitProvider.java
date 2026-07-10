@@ -1,7 +1,7 @@
 package br.com.creditcontract.adapter.out.stub;
 
 import br.com.creditcontract.application.port.out.CreditLimitProvider;
-import br.com.creditcontract.domain.valueobject.DocumentNumber;
+import br.com.creditcontract.domain.valueobject.Cpf;
 import br.com.creditcontract.domain.valueobject.MonetaryAmount;
 import org.springframework.stereotype.Component;
 
@@ -9,8 +9,8 @@ import java.math.BigDecimal;
 
 /**
  * Stub that assigns a deterministic credit-limit band based on the final
- * digit of the client document. This keeps local responses varied while
- * returning the same limit whenever the same document is used.
+ * digit of the client CPF. This keeps local responses varied while returning
+ * the same limit whenever the same CPF is used.
  *
  * <p>In production this becomes a call to the risk-engine REST/queue API.
  */
@@ -18,8 +18,8 @@ import java.math.BigDecimal;
 public class StubCreditLimitProvider implements CreditLimitProvider {
 
 	@Override
-	public MonetaryAmount getLimitFor(DocumentNumber documentNumber) {
-		int finalDigit = documentNumber.finalDigit();
+	public MonetaryAmount getLimitFor(Cpf cpf) {
+		int finalDigit = cpf.finalDigit();
 
 		BigDecimal limit = switch (finalDigit) {
 			case 0, 1 -> new BigDecimal("1000.00");

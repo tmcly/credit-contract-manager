@@ -1,43 +1,41 @@
 package br.com.creditcontract.domain.valueobject;
 
-import br.com.creditcontract.domain.exception.InvalidDocumentNumberException;
+import br.com.creditcontract.domain.exception.InvalidCpfException;
 
 import java.util.regex.Pattern;
 
 /**
- * Brazilian CPF or CNPJ represented by digits only.
+ * Brazilian CPF represented by digits only.
  *
  * <p>The constructor accepts formatted or unformatted values, normalizes the
  * representation, rejects unsupported characters and validates check digits.
  */
-public record DocumentNumber(String value) {
+public record Cpf(String value) {
 
 	private static final Pattern ALLOWED_FORMAT = Pattern.compile("[0-9./\\-\\s]+");
 	private static final Pattern NON_DIGITS = Pattern.compile("\\D");
 
 	private static final int[] CPF_FIRST_DIGIT_WEIGHTS = {10, 9, 8, 7, 6, 5, 4, 3, 2};
 	private static final int[] CPF_SECOND_DIGIT_WEIGHTS = {11, 10, 9, 8, 7, 6, 5, 4, 3, 2};
-	private static final int[] CNPJ_FIRST_DIGIT_WEIGHTS = {5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2};
-	private static final int[] CNPJ_SECOND_DIGIT_WEIGHTS = {6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2};
 
-	public DocumentNumber {
+	public Cpf {
 		if (value == null || value.isBlank()) {
-			throw new InvalidDocumentNumberException("documentNumber is required");
+			throw new InvalidCpfException("cpf is required");
 		}
 		if (!ALLOWED_FORMAT.matcher(value).matches()) {
-			throw new InvalidDocumentNumberException("documentNumber contains invalid characters");
+			throw new InvalidCpfException("cpf contains invalid characters");
 		}
 
 		String digits = NON_DIGITS.matcher(value).replaceAll("");
-		if (!isValidCpf(digits) && !isValidCnpj(digits)) {
-			throw new InvalidDocumentNumberException("documentNumber must be a valid CPF or CNPJ");
+		if (!isValidCpf(digits)) {
+			throw new InvalidCpfException("cpf must be valid");
 		}
 
 		value = digits;
 	}
 
-	public static DocumentNumber from(String value) {
-		return new DocumentNumber(value);
+	public static Cpf from(String value) {
+		return new Cpf(value);
 	}
 
 	public int finalDigit() {
@@ -48,12 +46,6 @@ public record DocumentNumber(String value) {
 		return digits.length() == 11
 				&& !hasRepeatedDigits(digits)
 				&& matchesCheckDigits(digits, CPF_FIRST_DIGIT_WEIGHTS, CPF_SECOND_DIGIT_WEIGHTS);
-	}
-
-	private static boolean isValidCnpj(String digits) {
-		return digits.length() == 14
-				&& !hasRepeatedDigits(digits)
-				&& matchesCheckDigits(digits, CNPJ_FIRST_DIGIT_WEIGHTS, CNPJ_SECOND_DIGIT_WEIGHTS);
 	}
 
 	private static boolean matchesCheckDigits(String digits, int[] firstWeights, int[] secondWeights) {

@@ -81,30 +81,30 @@ class CreateContractControllerTest {
 				.andExpect(jsonPath("$.version").value(0));
 
 		verify(useCase).execute(argThat(input ->
-				input.documentNumber().value().equals("52998224725")));
+				input.cpf().value().equals("52998224725")));
 	}
 
 	@Test
-	void shouldReturn400WhenDocumentNumberMissing() throws Exception {
-		String json = "{\"documentNumber\": \"\"}";
+	void shouldReturn400WhenCpfIsMissing() throws Exception {
+		String json = "{\"cpf\": \"\"}";
 
 		mockMvc.perform(post("/api/contracts")
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(json))
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.title").value("Invalid request"))
-				.andExpect(jsonPath("$.detail").value("documentNumber is required"));
+				.andExpect(jsonPath("$.detail").value("cpf is required"));
 	}
 
 	@Test
-	void shouldReturn400WhenDocumentNumberIsInvalid() throws Exception {
-		String json = "{\"documentNumber\": \"529.982.247-24\"}";
+	void shouldReturn400WhenCpfIsInvalid() throws Exception {
+		String json = "{\"cpf\": \"529.982.247-24\"}";
 
 		mockMvc.perform(post("/api/contracts")
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(json))
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.title").value("Invalid request"))
-				.andExpect(jsonPath("$.detail").value("documentNumber must be a valid CPF or CNPJ"));
+				.andExpect(jsonPath("$.detail").value("cpf must be valid"));
 	}
 }

@@ -3,12 +3,12 @@ package br.com.creditcontract.adapter.out.stub;
 import br.com.creditcontract.application.port.out.ClientDataProvider;
 import br.com.creditcontract.domain.valueobject.Address;
 import br.com.creditcontract.domain.valueobject.Client;
-import br.com.creditcontract.domain.valueobject.DocumentNumber;
+import br.com.creditcontract.domain.valueobject.Cpf;
 import br.com.creditcontract.domain.valueobject.ZipCode;
 import org.springframework.stereotype.Component;
 
 /**
- * Stub that returns a hardcoded client regardless of the document number.
+ * Stub that returns a hardcoded client regardless of the CPF.
  *
  * <p>In production this becomes an HTTP call to the client-registry REST API.
  */
@@ -16,7 +16,7 @@ import org.springframework.stereotype.Component;
 public class StubClientDataProvider implements ClientDataProvider {
 
 	@Override
-	public Client findByDocument(DocumentNumber documentNumber) {
+	public Client findByCpf(Cpf cpf) {
 		return new Client(
 				"Stub Client",
 				new Address("PR", "Curitiba", "Rua XV de Novembro", "1000",

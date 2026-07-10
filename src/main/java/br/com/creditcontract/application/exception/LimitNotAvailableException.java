@@ -1,7 +1,7 @@
 package br.com.creditcontract.application.exception;
 
 import br.com.creditcontract.application.port.out.CreditLimitProvider;
-import br.com.creditcontract.domain.valueobject.DocumentNumber;
+import br.com.creditcontract.domain.valueobject.Cpf;
 
 /**
  * Thrown when {@link CreditLimitProvider} cannot determine a credit limit
@@ -10,7 +10,7 @@ import br.com.creditcontract.domain.valueobject.DocumentNumber;
  */
 public class LimitNotAvailableException extends RuntimeException {
 
-	public LimitNotAvailableException(DocumentNumber documentNumber) {
-		super("credit limit not available for document: " + documentNumber.value());
+	public LimitNotAvailableException(Cpf cpf) {
+		super("credit limit not available for CPF: " + cpf.value());
 	}
 }
