@@ -78,10 +78,34 @@ src/main/java/br/com/creditcontract/
 
 - ✅ Scaffold functional (Spring Boot + Web + Actuator)
 - ✅ Domain modeled: `CreditContract` aggregate + value objects + `ContractStatus`
-- ✅ Unit tests passing (state transitions, invariants, versioning)
+- ✅ Domain ports: `ContractNumberGenerator`, `ClientDataProvider`, `CreditLimitProvider`
+- ✅ First use case: `CreateContractUseCase` (S of SOLID)
+- ✅ REST endpoint: `POST /api/contracts` — creates a contract via stubs
+- ✅ Unit tests passing (11 tests: 5 use case + 2 controller + 4 domain)
 - ✅ Docker: `Dockerfile` (multi-stage) + `docker-compose.yml`
-- ⏳ Use cases: not yet implemented
 - ⏳ Database: not defined
+- ⏳ Block / cancel / reanalyze use cases: not yet implemented
+
+## API
+
+```bash
+# Create a contract
+curl -X POST http://localhost:8080/api/contracts \
+  -H "Content-Type: application/json" \
+  -d '{"documentNumber": "12345678900"}'
+
+# Response: 201 Created
+# {
+#   "id": "uuid...",
+#   "contractNumber": "CT-2026-000001",
+#   "clientName": "Stub Client",
+#   "status": "DRAFT",
+#   "currency": "BRL",
+#   "creditLimit": "5000.00",
+#   "createdAt": "...",
+#   "version": 0
+# }
+```
 
 ## Run it
 
