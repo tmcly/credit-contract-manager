@@ -43,6 +43,7 @@ br.com.creditcontract
 └── adapter
     ├── in/rest
     └── out
+        ├── fake
         ├── persistence
         │   ├── jpa
         │   └── postgres
@@ -128,16 +129,16 @@ sequenceDiagram
     participant Client
     participant REST
     participant UseCase
-    participant ClientStub
+    participant ClientFake
     participant LimitStub
-    participant NumberStub
+    participant NumberGenerator
     participant PostgreSQL
 
     Client->>REST: POST /api/contracts (documentNumber)
     REST->>UseCase: CreateContractInput
-    UseCase->>ClientStub: findByDocument
+    UseCase->>ClientFake: findByDocument
     UseCase->>LimitStub: getLimitFor
-    UseCase->>NumberStub: next
+    UseCase->>NumberGenerator: next (PostgreSQL sequence)
     UseCase->>PostgreSQL: save contract + initial history
     UseCase-->>REST: CreditContract
     REST-->>Client: 201 Created
@@ -145,8 +146,12 @@ sequenceDiagram
 
 The synchronous flow is the current implementation, not the final event-driven
 target. Contract numbers come from a PostgreSQL sequence, while client and
-credit-limit integrations remain local substitutes. Sequence gaps are valid
-after rollbacks because uniqueness is required but gapless numbering is not.
+credit-limit integrations remain local substitutes. The client-registry fake
+uses a CPF-derived seed and the Brazilian Datafaker locale, so snapshots vary
+between documents but remain reproducible for the same CPF. It remains the
+default adapter while no real client-registry integration exists; a future real
+adapter will introduce profile-specific activation. Sequence gaps are valid after
+rollbacks because uniqueness is required but gapless numbering is not.
 The Flyway upgrade aligns the sequence with numbers previously issued by the
 local stub before PostgreSQL becomes the active generator.
 

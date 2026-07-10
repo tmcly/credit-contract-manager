@@ -22,6 +22,7 @@ Already implemented:
 - client snapshot stored with the contract;
 - generic status-transition history;
 - restart-safe contract numbers backed by a PostgreSQL sequence;
+- deterministic Brazilian client snapshots derived from the input CPF;
 - Docker Compose local environment;
 - PostgreSQL integration tests with Testcontainers.
 
@@ -59,7 +60,13 @@ port.
 - No `MAX(contract_number) + 1` query is used.
 - Unit and PostgreSQL integration tests pass.
 
-## Phase 2: Add a deterministic fake client registry
+## Phase 2: Add a deterministic fake client registry ✅
+
+Status: completed.
+
+Implementation note: Datafaker 2.7.0 was selected instead of a curated local
+dataset because its Brazilian locale can generate varied client snapshots while
+a CPF-derived seed keeps demonstrations reproducible.
 
 Suggested branch:
 

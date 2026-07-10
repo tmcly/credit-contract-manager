@@ -78,6 +78,13 @@
 			<artifactId>flyway-database-postgresql</artifactId>
 		</dependency>
 
+		<!-- Local fake: generates reproducible Brazilian client snapshots from a CPF seed -->
+		<dependency>
+			<groupId>net.datafaker</groupId>
+			<artifactId>datafaker</artifactId>
+			<version>2.7.0</version>
+		</dependency>
+
 		<!-- Actuator: healthcheck nativo do Spring Boot -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
