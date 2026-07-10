@@ -5,4 +5,4 @@
  * use-case outputs into HTTP responses. They never contain business
  * logic — that belongs in the application layer.
  */
-package br.com.creditcontract.interfaces.rest;
+package br.com.creditcontract.adapter.in.rest;

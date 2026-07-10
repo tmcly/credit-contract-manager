@@ -17,48 +17,16 @@ with strong emphasis on software design best practices.
 
 Dependencies point inwards. The domain knows nothing about any framework.
 
+```text
+HTTP ──▶ adapter.in.rest ──▶ application.usecase ──▶ domain
+                                │                      │
+                                │ invokes              │ declares
+                                ▼                      ▼
+                           domain.port ◀──── implements ──── adapter.out.stub
 ```
-                         ┌─────────────────────────────┐
-        HTTP (REST)      │     INTERFACES / ADAPTERS   │
-   ────────────────────▶ │  br.com.creditcontract.     │
-                         │        interfaces           │
-                         │  • HealthCheckController     │
-                         │  (translates JSON -> app)    │
-                         └──────────────┬──────────────┘
-                                        │ depends on
-                                        ▼
-                         ┌─────────────────────────────┐
-      USE CASES         │       APPLICATION           │
-                         │  br.com.creditcontract.     │
-                         │       application           │
-                         │  • *UseCase (S - SOLID)      │
-                         │  • orchestrates the domain   │
-                         │  • depends only on ABSTRACTIONS │
-                         └──────────────┬──────────────┘
-                                        │ depends on
-                                        ▼
-                         ┌─────────────────────────────┐
-      BUSINESS RULES     │         DOMAIN (DDD)        │
-                         │  br.com.creditcontract.     │
-                         │         domain              │
-                         │  • entity/   (CreditContract)│
-                         │  • valueobject/ (ContractId, │
-                         │      MonetaryAmount, ...)    │
-                         │  • enumeration/ (ContractStatus) │
-                         │  • NO Spring/JPA imports     │
-                         └─────────────────────────────┘
-                                        ▲
-                                        │ implements (ports)
-                                        │
-                         ┌─────────────────────────────┐
-   CONCRETE IMPL        │      INFRASTRUCTURE         │
-                         │  br.com.creditcontract.    │
-                         │      infrastructure        │
-                         │  • persistence (adapter)    │
-                         │  • Spring config            │
-                         │  • database (when defined)  │
-                         └─────────────────────────────┘
-```
+
+Inbound adapters translate external requests into use-case calls. Outbound
+adapters implement domain ports for databases, APIs, queues, or local stubs.
 
 ## Package structure
 
@@ -68,10 +36,13 @@ src/main/java/br/com/creditcontract/
 ├── domain/
 │   ├── entity/                        # aggregates / entities (CreditContract)
 │   ├── valueobject/                   # immutable value types
-│   └── enumeration/                   # domain enums (ContractStatus)
-├── application/                       # use cases (to be implemented)
-├── infrastructure/                    # adapters (persistence, config)
-└── interfaces/                        # entry points (REST controllers)
+│   ├── enums/                         # domain enums (ContractStatus)
+│   └── port/                          # outbound contracts
+├── application/
+│   └── usecase/                       # application orchestration
+└── adapter/
+    ├── in/rest/                       # REST controllers and DTOs
+    └── out/stub/                      # local implementations of domain ports
 ```
 
 ## Current state
@@ -81,7 +52,7 @@ src/main/java/br/com/creditcontract/
 - ✅ Domain ports: `ContractNumberGenerator`, `ClientDataProvider`, `CreditLimitProvider`
 - ✅ First use case: `CreateContractUseCase` (S of SOLID)
 - ✅ REST endpoint: `POST /api/contracts` — creates a contract via stubs
-- ✅ Unit tests passing (11 tests: 5 use case + 2 controller + 4 domain)
+- ✅ Unit tests passing (23 tests: 12 stub + 5 use case + 2 controller + 4 domain)
 - ✅ Docker: `Dockerfile` (multi-stage) + `docker-compose.yml`
 - ⏳ Database: not defined
 - ⏳ Block / cancel / reanalyze use cases: not yet implemented
@@ -101,11 +72,14 @@ curl -X POST http://localhost:8080/api/contracts \
 #   "clientName": "Stub Client",
 #   "status": "DRAFT",
 #   "currency": "BRL",
-#   "creditLimit": "5000.00",
+#   "creditLimit": "1000.00",
 #   "createdAt": "...",
 #   "version": 0
 # }
 ```
+
+The local credit-engine stub assigns deterministic limits from BRL 1,000.00
+to BRL 15,000.00 according to the final digit of the document number.
 
 ## Run it
 

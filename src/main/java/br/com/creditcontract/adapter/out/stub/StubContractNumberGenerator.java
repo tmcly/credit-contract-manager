@@ -1,4 +1,4 @@
-package br.com.creditcontract.infrastructure.stub;
+package br.com.creditcontract.adapter.out.stub;
 
 import br.com.creditcontract.domain.port.ContractNumberGenerator;
 import org.springframework.stereotype.Component;

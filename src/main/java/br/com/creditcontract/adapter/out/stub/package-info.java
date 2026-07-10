@@ -6,4 +6,4 @@
  * these are swapped for real adapters without touching domain or
  * application code.
  */
-package br.com.creditcontract.infrastructure.stub;
+package br.com.creditcontract.adapter.out.stub;

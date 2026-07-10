@@ -1,4 +1,4 @@
-package br.com.creditcontract.interfaces.rest;
+package br.com.creditcontract.adapter.in.rest;
 
 import br.com.creditcontract.application.usecase.CreateContractUseCase;
 import br.com.creditcontract.domain.entity.CreditContract;
@@ -8,7 +8,7 @@ import br.com.creditcontract.domain.valueobject.Client;
 import br.com.creditcontract.domain.valueobject.ContractId;
 import br.com.creditcontract.domain.valueobject.MonetaryAmount;
 import br.com.creditcontract.domain.valueobject.ZipCode;
-import br.com.creditcontract.interfaces.rest.dto.CreateContractRequest;
+import br.com.creditcontract.adapter.in.rest.dto.CreateContractRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
