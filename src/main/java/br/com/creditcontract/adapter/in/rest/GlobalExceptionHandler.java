@@ -1,4 +1,4 @@
-package br.com.creditcontract.interfaces.rest;
+package br.com.creditcontract.adapter.in.rest;
 
 import br.com.creditcontract.domain.port.ClientNotFoundException;
 import br.com.creditcontract.domain.port.LimitNotAvailableException;

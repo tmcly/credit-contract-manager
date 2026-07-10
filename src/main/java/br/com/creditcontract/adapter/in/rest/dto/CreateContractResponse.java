@@ -1,4 +1,4 @@
-package br.com.creditcontract.interfaces.rest.dto;
+package br.com.creditcontract.adapter.in.rest.dto;
 
 import br.com.creditcontract.domain.valueobject.MonetaryAmount;
 
