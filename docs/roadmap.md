@@ -25,6 +25,8 @@ Already implemented:
 - deterministic Brazilian client snapshots derived from the input CPF;
 - versioned `CreditContractCreated` domain events;
 - atomic PostgreSQL transactional outbox persistence;
+- confirmed RabbitMQ publication from bounded outbox batches;
+- durable contract-event exchange, analysis queue, and binding;
 - Docker Compose local environment;
 - PostgreSQL integration tests with Testcontainers.
 
@@ -141,7 +143,9 @@ without adding a broker dependency yet.
 - Domain code has no RabbitMQ, JSON, or JPA dependency.
 - Events use stable names and explicit schema versions.
 
-## Phase 4: Publish outbox events through RabbitMQ
+## Phase 4: Publish outbox events through RabbitMQ ✅
+
+Status: completed.
 
 Suggested branch:
 

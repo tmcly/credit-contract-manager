@@ -22,6 +22,9 @@ flowchart LR
     PERSISTENCE --> PG[("PostgreSQL")]
     OUTBOX["Outbox persistence adapter"] --> PG
     PERSISTENCE --> OUTBOX
+    RELAY["Scheduled outbox relay"] --> OUTBOX
+    RELAY --> PUBLISHER["RabbitMQ publisher adapter"]
+    PUBLISHER --> MQ[("RabbitMQ")]
 ```
 
 The domain has no dependency on Spring, JPA, HTTP, PostgreSQL, or messaging.
@@ -47,6 +50,7 @@ br.com.creditcontract
     ├── in/rest
     └── out
         ├── fake
+        ├── messaging/rabbitmq
         ├── persistence
         │   ├── jpa
         │   ├── outbox
@@ -188,15 +192,47 @@ same PostgreSQL transaction. If any write fails, all of them roll back together.
 Event JSON serialization and outbox SQL remain outbound concerns, so the domain
 does not depend on Jackson, JDBC, JPA, or messaging. Pending aggregate events are
 removed from memory only after the transaction commits. Outbox rows start as
-`PENDING`; publishing them to RabbitMQ, including retries and publisher confirms,
-is intentionally deferred to the next roadmap phase.
+`PENDING`.
+
+## RabbitMQ publication
+
+```mermaid
+sequenceDiagram
+    participant Relay as Scheduled outbox relay
+    participant DB as PostgreSQL
+    participant MQ as RabbitMQ
+
+    Relay->>DB: Lock bounded PENDING batch (SKIP LOCKED)
+    loop Each eligible event
+        Relay->>MQ: Publish persistent JSON message
+        alt Broker confirms
+            MQ-->>Relay: ack
+            Relay->>DB: Mark PUBLISHED
+        else Broker rejects or is unavailable
+            MQ-->>Relay: nack / timeout / failure
+            Relay->>DB: Increment attempts and schedule retry
+        end
+    end
+```
+
+The application declares the durable `credit-contract.events` direct exchange,
+the durable `credit-analysis.requests` queue, and the
+`credit-contract.created.v1` binding. The message preserves event identity,
+aggregate metadata, event type, schema version, occurrence time, correlation
+ID, and optional causation ID.
+
+The relay selects a bounded batch with `FOR UPDATE SKIP LOCKED`, allowing more
+than one application instance without selecting the same row concurrently. A
+publisher confirmation is required before the database row becomes
+`PUBLISHED`. A crash between broker confirmation and database commit may cause
+a duplicate delivery, which is expected under the project's at-least-once
+contract and must be handled idempotently by future consumers.
 
 ## Target evolution
 
-The accepted direction is an event-driven workflow using PostgreSQL,
-transactional outbox, and RabbitMQ. The target must preserve consistency across
-the database and broker, assume at-least-once delivery, and make consumers
-idempotent.
+The event-driven foundation now uses PostgreSQL, a transactional outbox, and
+RabbitMQ. The next evolution introduces the asynchronous credit-analysis
+consumer while preserving at-least-once delivery and requiring idempotency.
 
 See [the roadmap](../roadmap.md) for the implementation sequence and
 [the ADR index](decisions/README.md) for decision rationale.
