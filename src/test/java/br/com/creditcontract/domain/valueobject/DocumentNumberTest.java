@@ -17,14 +17,6 @@ class DocumentNumberTest {
 	}
 
 	@Test
-	void shouldNormalizeAndValidateFormattedCnpj() {
-		DocumentNumber documentNumber = DocumentNumber.from("11.222.333/0001-81");
-
-		assertEquals("11222333000181", documentNumber.value());
-		assertEquals(1, documentNumber.finalDigit());
-	}
-
-	@Test
 	void shouldRejectInvalidCheckDigits() {
 		assertThrows(InvalidDocumentNumberException.class,
 				() -> DocumentNumber.from("529.982.247-24"));

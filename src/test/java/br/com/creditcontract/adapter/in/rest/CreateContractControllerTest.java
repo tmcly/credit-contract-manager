@@ -85,7 +85,7 @@ class CreateContractControllerTest {
 	}
 
 	@Test
-	void shouldReturn400WhenDocumentNumberMissing() throws Exception {
+	void shouldReturn400WhenCpfIsMissing() throws Exception {
 		String json = "{\"documentNumber\": \"\"}";
 
 		mockMvc.perform(post("/api/contracts")
@@ -97,7 +97,7 @@ class CreateContractControllerTest {
 	}
 
 	@Test
-	void shouldReturn400WhenDocumentNumberIsInvalid() throws Exception {
+	void shouldReturn400WhenCpfIsInvalid() throws Exception {
 		String json = "{\"documentNumber\": \"529.982.247-24\"}";
 
 		mockMvc.perform(post("/api/contracts")
@@ -105,6 +105,6 @@ class CreateContractControllerTest {
 						.content(json))
 				.andExpect(status().isBadRequest())
 				.andExpect(jsonPath("$.title").value("Invalid request"))
-				.andExpect(jsonPath("$.detail").value("documentNumber must be a valid CPF or CNPJ"));
+				.andExpect(jsonPath("$.detail").value("documentNumber must be valid"));
 	}
 }

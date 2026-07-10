@@ -53,10 +53,10 @@ src/main/java/br/com/creditcontract/
 - ✅ Scaffold functional (Spring Boot + Web + Actuator)
 - ✅ Domain modeled: `CreditContract` aggregate + value objects + `ContractStatus`
 - ✅ Application output ports: `ContractNumberGenerator`, `ClientDataProvider`, `CreditLimitProvider`
-- ✅ CPF/CNPJ value object: normalization and check-digit validation
+- ✅ CPF value object: normalization and check-digit validation
 - ✅ First use case: `CreateContractUseCase` (S of SOLID)
 - ✅ REST endpoint: `POST /api/contracts` — creates a contract via stubs
-- ✅ Unit tests passing (30 tests: 11 stub + 5 use case + 3 controller + 11 domain)
+- ✅ Unit tests passing (29 tests: 11 stub + 5 use case + 3 controller + 10 domain)
 - ✅ Docker: `Dockerfile` (multi-stage) + `docker-compose.yml`
 - ⏳ Database: not defined
 - ⏳ Block / cancel / reanalyze use cases: not yet implemented
@@ -83,7 +83,7 @@ curl -X POST http://localhost:8080/api/contracts \
 ```
 
 The local credit-engine stub assigns deterministic limits from BRL 1,000.00
-to BRL 15,000.00 according to the final digit of the document number.
+to BRL 15,000.00 according to the final digit of the CPF.
 
 ## Run it
 

@@ -8,7 +8,7 @@ import br.com.creditcontract.domain.valueobject.ZipCode;
 import org.springframework.stereotype.Component;
 
 /**
- * Stub that returns a hardcoded client regardless of the document number.
+ * Stub that returns a hardcoded client regardless of the CPF.
  *
  * <p>In production this becomes an HTTP call to the client-registry REST API.
  */

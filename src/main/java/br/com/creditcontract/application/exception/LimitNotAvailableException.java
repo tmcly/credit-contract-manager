@@ -11,6 +11,6 @@ import br.com.creditcontract.domain.valueobject.DocumentNumber;
 public class LimitNotAvailableException extends RuntimeException {
 
 	public LimitNotAvailableException(DocumentNumber documentNumber) {
-		super("credit limit not available for document: " + documentNumber.value());
+		super("credit limit not available for CPF: " + documentNumber.value());
 	}
 }

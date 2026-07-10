@@ -37,7 +37,7 @@ class CreateContractUseCaseTest {
 
 	private CreateContractUseCase useCase;
 
-	private static final DocumentNumber DOCUMENT = DocumentNumber.from("52998224725");
+	private static final DocumentNumber CPF = DocumentNumber.from("52998224725");
 	private static final Client STUB_CLIENT = new Client(
 			"Alice Oliveira",
 			new Address("SP", "São Paulo", "Av. Paulista", "1000", new ZipCode("01310-000"))
@@ -51,11 +51,11 @@ class CreateContractUseCaseTest {
 
 	@Test
 	void shouldCreateContractWithAllResolvedDependencies() {
-		when(clientDataProvider.findByDocument(DOCUMENT)).thenReturn(STUB_CLIENT);
-		when(creditLimitProvider.getLimitFor(DOCUMENT)).thenReturn(STUB_LIMIT);
+		when(clientDataProvider.findByDocument(CPF)).thenReturn(STUB_CLIENT);
+		when(creditLimitProvider.getLimitFor(CPF)).thenReturn(STUB_LIMIT);
 		when(contractNumberGenerator.next()).thenReturn("CT-2026-000042");
 
-		CreditContract contract = useCase.execute(new CreateContractInput(DOCUMENT));
+		CreditContract contract = useCase.execute(new CreateContractInput(CPF));
 
 		assertNotNull(contract.getId());
 		assertEquals("CT-2026-000042", contract.getContractNumber());
@@ -73,25 +73,25 @@ class CreateContractUseCaseTest {
 
 	@Test
 	void shouldPropagateClientNotFoundException() {
-		when(clientDataProvider.findByDocument(DOCUMENT))
-				.thenThrow(new ClientNotFoundException(DOCUMENT));
+		when(clientDataProvider.findByDocument(CPF))
+				.thenThrow(new ClientNotFoundException(CPF));
 
 		assertThrows(ClientNotFoundException.class,
-				() -> useCase.execute(new CreateContractInput(DOCUMENT)));
+				() -> useCase.execute(new CreateContractInput(CPF)));
 	}
 
 	@Test
 	void shouldPropagateLimitNotAvailableException() {
-		when(clientDataProvider.findByDocument(DOCUMENT)).thenReturn(STUB_CLIENT);
-		when(creditLimitProvider.getLimitFor(DOCUMENT))
-				.thenThrow(new LimitNotAvailableException(DOCUMENT));
+		when(clientDataProvider.findByDocument(CPF)).thenReturn(STUB_CLIENT);
+		when(creditLimitProvider.getLimitFor(CPF))
+				.thenThrow(new LimitNotAvailableException(CPF));
 
 		assertThrows(LimitNotAvailableException.class,
-				() -> useCase.execute(new CreateContractInput(DOCUMENT)));
+				() -> useCase.execute(new CreateContractInput(CPF)));
 	}
 
 	@Test
-	void inputShouldRejectNullDocumentNumber() {
+	void inputShouldRejectNullCpf() {
 		assertThrows(NullPointerException.class, () -> new CreateContractInput(null));
 	}
 }

@@ -9,8 +9,8 @@ import java.math.BigDecimal;
 
 /**
  * Stub that assigns a deterministic credit-limit band based on the final
- * digit of the client document. This keeps local responses varied while
- * returning the same limit whenever the same document is used.
+ * digit of the client CPF. This keeps local responses varied while returning
+ * the same limit whenever the same CPF is used.
  *
  * <p>In production this becomes a call to the risk-engine REST/queue API.
  */
