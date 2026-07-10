@@ -6,6 +6,7 @@ import br.com.creditcontract.domain.enums.ContractStatus;
 import br.com.creditcontract.domain.valueobject.Address;
 import br.com.creditcontract.domain.valueobject.Client;
 import br.com.creditcontract.domain.valueobject.ContractId;
+import br.com.creditcontract.domain.valueobject.DocumentNumber;
 import br.com.creditcontract.domain.valueobject.MonetaryAmount;
 import br.com.creditcontract.domain.valueobject.ZipCode;
 import br.com.creditcontract.adapter.in.rest.dto.CreateContractRequest;
@@ -58,7 +59,7 @@ class CreateContractControllerTest {
 		CreditContract contract = CreditContract.create(
 				ContractId.generate(),
 				"CT-2026-000001",
-				new Client("Maria Silva",
+				new Client(DocumentNumber.from("52998224725"), "Maria Silva",
 						new Address("PR", "Curitiba", "Rua das Flores", "123",
 								new ZipCode("80010-000"))),
 				MonetaryAmount.reais(new BigDecimal("5000.00"))
@@ -76,7 +77,6 @@ class CreateContractControllerTest {
 				.andExpect(jsonPath("$.contractNumber").value("CT-2026-000001"))
 				.andExpect(jsonPath("$.clientName").value("Maria Silva"))
 				.andExpect(jsonPath("$.status").value("DRAFT"))
-				.andExpect(jsonPath("$.currency").value("BRL"))
 				.andExpect(jsonPath("$.creditLimit").value("5000.00"))
 				.andExpect(jsonPath("$.version").value(0));
 

@@ -15,7 +15,6 @@ public record CreateContractResponse(
 		String contractNumber,
 		String clientName,
 		String status,
-		String currency,
 		String creditLimit,
 		LocalDateTime createdAt,
 		Long version
@@ -34,7 +33,6 @@ public record CreateContractResponse(
 				contractNumber,
 				clientName,
 				status,
-				creditLimit.currency(),
 				creditLimit.amount().toPlainString(),
 				createdAt,
 				version

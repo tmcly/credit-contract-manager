@@ -5,6 +5,7 @@ import br.com.creditcontract.application.exception.LimitNotAvailableException;
 import br.com.creditcontract.application.port.out.ClientDataProvider;
 import br.com.creditcontract.application.port.out.ContractNumberGenerator;
 import br.com.creditcontract.application.port.out.CreditLimitProvider;
+import br.com.creditcontract.application.port.out.CreditContractRepository;
 import br.com.creditcontract.domain.entity.CreditContract;
 import br.com.creditcontract.domain.enums.ContractStatus;
 import br.com.creditcontract.domain.valueobject.Address;
@@ -24,6 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class CreateContractUseCaseTest {
@@ -34,11 +36,14 @@ class CreateContractUseCaseTest {
 	private CreditLimitProvider creditLimitProvider;
 	@Mock
 	private ContractNumberGenerator contractNumberGenerator;
+	@Mock
+	private CreditContractRepository creditContractRepository;
 
 	private CreateContractUseCase useCase;
 
 	private static final DocumentNumber DOCUMENT = DocumentNumber.from("52998224725");
 	private static final Client STUB_CLIENT = new Client(
+			DOCUMENT,
 			"Alice Oliveira",
 			new Address("SP", "São Paulo", "Av. Paulista", "1000", new ZipCode("01310-000"))
 	);
@@ -46,7 +51,11 @@ class CreateContractUseCaseTest {
 
 	@BeforeEach
 	void setUp() {
-		useCase = new CreateContractUseCase(clientDataProvider, creditLimitProvider, contractNumberGenerator);
+		useCase = new CreateContractUseCase(
+				clientDataProvider,
+				creditLimitProvider,
+				contractNumberGenerator,
+				creditContractRepository);
 	}
 
 	@Test
@@ -64,6 +73,7 @@ class CreateContractUseCaseTest {
 		assertEquals(new BigDecimal("5000.00"), contract.getCreditLimit().amount());
 		assertEquals(0L, contract.getVersion());
 		assertNotNull(contract.getCreatedAt());
+		verify(creditContractRepository).save(contract);
 	}
 
 	@Test

@@ -1,4 +1,22 @@
 services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: credit-contract-postgres
+    environment:
+      POSTGRES_DB: credit_contracts
+      POSTGRES_USER: credit_contract
+      POSTGRES_PASSWORD: credit_contract
+    ports:
+      - "5432:5432"
+    volumes:
+      - credit-contract-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U credit_contract -d credit_contracts"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
   credit-contract-manager:
     build:
       context: .
@@ -7,9 +25,19 @@ services:
     container_name: credit-contract-manager
     ports:
       - "8080:8080"
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/credit_contracts
+      DB_USERNAME: credit_contract
+      DB_PASSWORD: credit_contract
+    depends_on:
+      postgres:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s
       timeout: 5s
       retries: 3
     restart: unless-stopped
+
+volumes:
+  credit-contract-postgres-data:

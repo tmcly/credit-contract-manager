@@ -11,9 +11,10 @@ import java.util.Objects;
  * If a client ever needs its own lifecycle (multiple contracts per client),
  * this can become an entity later.
  */
-public record Client(String name, Address address) {
+public record Client(DocumentNumber documentNumber, String name, Address address) {
 
 	public Client {
+		Objects.requireNonNull(documentNumber, "client document number cannot be null");
 		Objects.requireNonNull(name, "client name cannot be null");
 		Objects.requireNonNull(address, "client address cannot be null");
 	}
