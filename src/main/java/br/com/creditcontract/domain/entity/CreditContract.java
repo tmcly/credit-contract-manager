@@ -23,7 +23,7 @@ import java.util.Objects;
  * </ul>
  *
  * <p>This class is persistence-agnostic: no JPA, no Spring, no database
- * annotations. The infrastructure layer will map it to a DB model later
+ * annotations. A persistence adapter will map it to a DB model later
  * (the {@code version} field maps naturally to JPA {@code @Version}).
  */
 public class CreditContract {

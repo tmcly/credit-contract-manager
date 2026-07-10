@@ -23,7 +23,9 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -64,7 +66,7 @@ class CreateContractControllerTest {
 
 		when(useCase.execute(any())).thenReturn(contract);
 
-		CreateContractRequest request = new CreateContractRequest("12345678900");
+		CreateContractRequest request = new CreateContractRequest("529.982.247-25");
 
 		mockMvc.perform(post("/api/contracts")
 						.contentType(MediaType.APPLICATION_JSON)
@@ -77,6 +79,9 @@ class CreateContractControllerTest {
 				.andExpect(jsonPath("$.currency").value("BRL"))
 				.andExpect(jsonPath("$.creditLimit").value("5000.00"))
 				.andExpect(jsonPath("$.version").value(0));
+
+		verify(useCase).execute(argThat(input ->
+				input.documentNumber().value().equals("52998224725")));
 	}
 
 	@Test
@@ -86,6 +91,20 @@ class CreateContractControllerTest {
 		mockMvc.perform(post("/api/contracts")
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(json))
-				.andExpect(status().isBadRequest());
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.title").value("Invalid request"))
+				.andExpect(jsonPath("$.detail").value("documentNumber is required"));
+	}
+
+	@Test
+	void shouldReturn400WhenDocumentNumberIsInvalid() throws Exception {
+		String json = "{\"documentNumber\": \"529.982.247-24\"}";
+
+		mockMvc.perform(post("/api/contracts")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(json))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.title").value("Invalid request"))
+				.andExpect(jsonPath("$.detail").value("documentNumber must be a valid CPF or CNPJ"));
 	}
 }

@@ -3,8 +3,10 @@ package br.com.creditcontract.adapter.in.rest;
 import br.com.creditcontract.application.usecase.CreateContractInput;
 import br.com.creditcontract.application.usecase.CreateContractUseCase;
 import br.com.creditcontract.domain.entity.CreditContract;
+import br.com.creditcontract.domain.valueobject.DocumentNumber;
 import br.com.creditcontract.adapter.in.rest.dto.CreateContractRequest;
 import br.com.creditcontract.adapter.in.rest.dto.CreateContractResponse;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -28,8 +30,8 @@ public class CreateContractController {
 	}
 
 	@PostMapping
-	public ResponseEntity<CreateContractResponse> create(@RequestBody CreateContractRequest request) {
-		CreateContractInput input = new CreateContractInput(request.documentNumber());
+	public ResponseEntity<CreateContractResponse> create(@Valid @RequestBody CreateContractRequest request) {
+		CreateContractInput input = new CreateContractInput(DocumentNumber.from(request.documentNumber()));
 		CreditContract contract = createContractUseCase.execute(input);
 
 		CreateContractResponse response = CreateContractResponse.from(

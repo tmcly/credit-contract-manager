@@ -7,7 +7,8 @@
  *
  * Characteristics:
  *   - Does not contain complex business rules (that belongs to the domain).
- *   - Depends only on abstractions owned by the inner layers (domain ports).
+ *   - Owns output ports for external capabilities required by its use cases.
+ *   - Depends on the domain, never on concrete adapters.
  *   - Knows nothing about transport (HTTP, queue) or concrete persistence.
  *
  * Future examples: CreateContractUseCase, CancelContractUseCase,

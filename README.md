@@ -19,14 +19,15 @@ Dependencies point inwards. The domain knows nothing about any framework.
 
 ```text
 HTTP ──▶ adapter.in.rest ──▶ application.usecase ──▶ domain
-                                │                      │
-                                │ invokes              │ declares
-                                ▼                      ▼
-                           domain.port ◀──── implements ──── adapter.out.stub
+                                │
+                                │ invokes
+                                ▼
+                     application.port.out ◀──── implements ──── adapter.out.stub
 ```
 
-Inbound adapters translate external requests into use-case calls. Outbound
-adapters implement domain ports for databases, APIs, queues, or local stubs.
+Inbound adapters translate external requests into use-case calls. The
+application owns the output ports required by those use cases, and outbound
+adapters implement them for databases, APIs, queues, or local stubs.
 
 ## Package structure
 
@@ -37,22 +38,25 @@ src/main/java/br/com/creditcontract/
 │   ├── entity/                        # aggregates / entities (CreditContract)
 │   ├── valueobject/                   # immutable value types
 │   ├── enums/                         # domain enums (ContractStatus)
-│   └── port/                          # outbound contracts
+│   └── exception/                     # domain validation errors
 ├── application/
-│   └── usecase/                       # application orchestration
+│   ├── usecase/                       # application orchestration
+│   ├── port/out/                      # required external capabilities
+│   └── exception/                     # use-case and integration errors
 └── adapter/
     ├── in/rest/                       # REST controllers and DTOs
-    └── out/stub/                      # local implementations of domain ports
+    └── out/stub/                      # local implementations of application ports
 ```
 
 ## Current state
 
 - ✅ Scaffold functional (Spring Boot + Web + Actuator)
 - ✅ Domain modeled: `CreditContract` aggregate + value objects + `ContractStatus`
-- ✅ Domain ports: `ContractNumberGenerator`, `ClientDataProvider`, `CreditLimitProvider`
+- ✅ Application output ports: `ContractNumberGenerator`, `ClientDataProvider`, `CreditLimitProvider`
+- ✅ CPF/CNPJ value object: normalization and check-digit validation
 - ✅ First use case: `CreateContractUseCase` (S of SOLID)
 - ✅ REST endpoint: `POST /api/contracts` — creates a contract via stubs
-- ✅ Unit tests passing (23 tests: 12 stub + 5 use case + 2 controller + 4 domain)
+- ✅ Unit tests passing (30 tests: 11 stub + 5 use case + 3 controller + 11 domain)
 - ✅ Docker: `Dockerfile` (multi-stage) + `docker-compose.yml`
 - ⏳ Database: not defined
 - ⏳ Block / cancel / reanalyze use cases: not yet implemented
@@ -63,7 +67,7 @@ src/main/java/br/com/creditcontract/
 # Create a contract
 curl -X POST http://localhost:8080/api/contracts \
   -H "Content-Type: application/json" \
-  -d '{"documentNumber": "12345678900"}'
+  -d '{"documentNumber": "529.982.247-25"}'
 
 # Response: 201 Created
 # {
@@ -72,7 +76,7 @@ curl -X POST http://localhost:8080/api/contracts \
 #   "clientName": "Stub Client",
 #   "status": "DRAFT",
 #   "currency": "BRL",
-#   "creditLimit": "1000.00",
+#   "creditLimit": "5000.00",
 #   "createdAt": "...",
 #   "version": 0
 # }

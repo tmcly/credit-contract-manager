@@ -1,6 +1,7 @@
 package br.com.creditcontract.adapter.out.stub;
 
-import br.com.creditcontract.domain.port.CreditLimitProvider;
+import br.com.creditcontract.application.port.out.CreditLimitProvider;
+import br.com.creditcontract.domain.valueobject.DocumentNumber;
 import br.com.creditcontract.domain.valueobject.MonetaryAmount;
 import org.springframework.stereotype.Component;
 
@@ -17,8 +18,8 @@ import java.math.BigDecimal;
 public class StubCreditLimitProvider implements CreditLimitProvider {
 
 	@Override
-	public MonetaryAmount getLimitFor(String documentNumber) {
-		int finalDigit = findFinalDigit(documentNumber);
+	public MonetaryAmount getLimitFor(DocumentNumber documentNumber) {
+		int finalDigit = documentNumber.finalDigit();
 
 		BigDecimal limit = switch (finalDigit) {
 			case 0, 1 -> new BigDecimal("1000.00");
@@ -31,20 +32,5 @@ public class StubCreditLimitProvider implements CreditLimitProvider {
 		};
 
 		return MonetaryAmount.reais(limit);
-	}
-
-	private int findFinalDigit(String documentNumber) {
-		if (documentNumber == null || documentNumber.isBlank()) {
-			throw new IllegalArgumentException("documentNumber is required");
-		}
-
-		for (int index = documentNumber.length() - 1; index >= 0; index--) {
-			char character = documentNumber.charAt(index);
-			if (Character.isDigit(character)) {
-				return Character.digit(character, 10);
-			}
-		}
-
-		throw new IllegalArgumentException("documentNumber must contain at least one digit");
 	}
 }

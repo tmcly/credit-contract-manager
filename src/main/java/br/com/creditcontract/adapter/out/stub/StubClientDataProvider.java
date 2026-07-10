@@ -1,8 +1,9 @@
 package br.com.creditcontract.adapter.out.stub;
 
-import br.com.creditcontract.domain.port.ClientDataProvider;
+import br.com.creditcontract.application.port.out.ClientDataProvider;
 import br.com.creditcontract.domain.valueobject.Address;
 import br.com.creditcontract.domain.valueobject.Client;
+import br.com.creditcontract.domain.valueobject.DocumentNumber;
 import br.com.creditcontract.domain.valueobject.ZipCode;
 import org.springframework.stereotype.Component;
 
@@ -15,7 +16,7 @@ import org.springframework.stereotype.Component;
 public class StubClientDataProvider implements ClientDataProvider {
 
 	@Override
-	public Client findByDocument(String documentNumber) {
+	public Client findByDocument(DocumentNumber documentNumber) {
 		return new Client(
 				"Stub Client",
 				new Address("PR", "Curitiba", "Rua XV de Novembro", "1000",

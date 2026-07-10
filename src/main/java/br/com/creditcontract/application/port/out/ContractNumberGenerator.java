@@ -1,10 +1,10 @@
-package br.com.creditcontract.domain.port;
+package br.com.creditcontract.application.port.out;
 
 /**
  * Generates sequential, human-readable contract numbers.
  *
  * <p>The format is deliberately opaque to the domain — only the
- * infrastructure knows whether numbers come from a database sequence,
+ * outbound adapter knows whether numbers come from a database sequence,
  * Redis INCR, or a distributed ID generator. The domain just calls
  * {@link #next()} and receives a non-null, non-blank string.
  */

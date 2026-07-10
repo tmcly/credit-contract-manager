@@ -1,5 +1,5 @@
 /**
- * Stub (fake) implementations of domain ports for local development.
+ * Stub implementations of application output ports for local development.
  *
  * <p>Every class in this package is a Spring component that fakes an
  * external system — database, REST API, message queue. In production
