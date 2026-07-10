@@ -30,6 +30,13 @@ Inbound adapters translate external requests into use-case calls. The
 application owns the output ports required by those use cases, and outbound
 adapters implement them for databases, APIs, queues, or local stubs.
 
+Detailed project context is persisted in the repository:
+
+- [Architecture overview](docs/architecture/overview.md)
+- [Architecture Decision Records](docs/architecture/decisions/README.md)
+- [Implementation roadmap](docs/roadmap.md)
+- [Agent workflow and repository conventions](AGENTS.md)
+
 ## Package structure
 
 ```
@@ -56,13 +63,13 @@ src/main/java/br/com/creditcontract/
 - ✅ Scaffold functional (Spring Boot + Web + Actuator)
 - ✅ Domain modeled: `CreditContract` aggregate + value objects + `ContractStatus`
 - ✅ Application output ports: `ContractNumberGenerator`, `ClientDataProvider`, `CreditLimitProvider`
-- ✅ CPF value object: normalization and check-digit validation
+- ✅ `DocumentNumber`: CPF-only normalization and check-digit validation
 - ✅ First use case: `CreateContractUseCase` (S of SOLID)
 - ✅ REST endpoint: `POST /api/contracts` — creates a contract via stubs
 - ✅ PostgreSQL persistence with client snapshot in `credit_contracts`
 - ✅ Generic status changes in `contract_status_history`
 - ✅ Flyway schema migration + Testcontainers integration test
-- ✅ Unit tests passing (29 tests: 11 stub + 5 use case + 3 controller + 10 domain)
+- ✅ Automated unit and PostgreSQL integration tests
 - ✅ Docker: `Dockerfile` (multi-stage) + `docker-compose.yml`
 - ⏳ Block / cancel / reanalyze use cases: not yet implemented
 
@@ -86,8 +93,8 @@ curl -X POST http://localhost:8080/api/contracts \
 # }
 ```
 
-The local credit-engine stub assigns deterministic limits from BRL 1,000.00
-to BRL 15,000.00 according to the final digit of the CPF.
+The local credit-engine stub assigns deterministic limits from R$ 1,000.00
+to R$ 15,000.00 according to the final digit of the CPF.
 
 ## Run it
 
