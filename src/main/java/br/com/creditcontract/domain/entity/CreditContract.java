@@ -1,6 +1,8 @@
 package br.com.creditcontract.domain.entity;
 
 import br.com.creditcontract.domain.enums.ContractStatus;
+import br.com.creditcontract.domain.event.CreditContractCreated;
+import br.com.creditcontract.domain.event.DomainEvent;
 import br.com.creditcontract.domain.valueobject.Client;
 import br.com.creditcontract.domain.valueobject.ContractId;
 import br.com.creditcontract.domain.valueobject.MonetaryAmount;
@@ -22,11 +24,12 @@ import java.util.Objects;
  *   <li>Every meaningful change bumps {@code version} and refreshes
  *       {@code lastUpdateDate} — this is what gave the original system
  *       contract traceability (versioned contracts).</li>
+ *   <li>New business facts are recorded as domain events and remain pending
+ *       until an adapter confirms that their transaction committed.</li>
  * </ul>
  *
  * <p>This class is persistence-agnostic: no JPA, no Spring, no database
- * annotations. A persistence adapter will map it to a DB model later
- * (the {@code version} field maps naturally to JPA {@code @Version}).
+ * annotations. Outbound adapters map it to infrastructure models.
  */
 public class CreditContract {
 
@@ -37,6 +40,7 @@ public class CreditContract {
 	private final MonetaryAmount creditLimit;
 	private final LocalDateTime createdAt;
 	private final List<ContractStatusHistory> statusHistory;
+	private final List<DomainEvent> domainEvents;
 	private LocalDateTime updatedAt;
 	private Long version;
 
@@ -51,6 +55,7 @@ public class CreditContract {
 		this.version = 0L;
 		this.statusHistory = new ArrayList<>();
 		this.statusHistory.add(ContractStatusHistory.initial(this.status, this.createdAt));
+		this.domainEvents = new ArrayList<>();
 	}
 
 	/** Factory: creates a brand new contract in its initial state. */
@@ -58,7 +63,7 @@ public class CreditContract {
 	                                     String contractNumber,
 	                                     Client client,
 	                                     MonetaryAmount creditLimit) {
-		return builder()
+		CreditContract contract = builder()
 				.id(id)
 				.contractNumber(contractNumber)
 				.client(client)
@@ -66,6 +71,12 @@ public class CreditContract {
 				.createdAt(LocalDateTime.now())
 				.status(ContractStatus.DRAFT)
 				.build();
+		contract.domainEvents.add(CreditContractCreated.initial(
+				contract.id,
+				contract.contractNumber,
+				contract.client.documentNumber(),
+				contract.createdAt));
+		return contract;
 	}
 
 	// ---- Accessors ----
@@ -80,6 +91,14 @@ public class CreditContract {
 	public Long getVersion() { return version; }
 	public List<ContractStatusHistory> getStatusHistory() {
 		return Collections.unmodifiableList(statusHistory);
+	}
+	public List<DomainEvent> getDomainEvents() {
+		return Collections.unmodifiableList(domainEvents);
+	}
+
+	/** Removes only events confirmed in a successfully committed transaction. */
+	public void markDomainEventsCommitted(List<DomainEvent> committedEvents) {
+		domainEvents.removeAll(List.copyOf(committedEvents));
 	}
 
 	// ---- Builder ----

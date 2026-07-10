@@ -44,6 +44,7 @@ src/main/java/br/com/creditcontract/
 ├── CreditContractApplication.java     # main (Spring Boot)
 ├── domain/
 │   ├── entity/                        # aggregates / entities (CreditContract)
+│   ├── event/                         # domain events and metadata
 │   ├── valueobject/                   # immutable value types
 │   ├── enums/                         # domain enums (ContractStatus)
 │   └── exception/                     # domain validation errors
@@ -58,6 +59,7 @@ src/main/java/br/com/creditcontract/
         ├── stub/                      # local external-service substitutes
         └── persistence/
             ├── jpa/                   # aggregate persistence adapter
+            ├── outbox/                # event serialization and durable outbox
             └── postgres/              # PostgreSQL-specific output adapters
 ```
 
@@ -73,6 +75,7 @@ src/main/java/br/com/creditcontract/
 - ✅ REST endpoint: `POST /api/contracts` — creates a contract via local adapters
 - ✅ PostgreSQL persistence with client snapshot in `credit_contracts`
 - ✅ Generic status changes in `contract_status_history`
+- ✅ `CreditContractCreated` persisted through a transactional outbox
 - ✅ Flyway schema migration + Testcontainers integration test
 - ✅ Automated unit and PostgreSQL integration tests
 - ✅ Docker: `Dockerfile` (multi-stage) + `docker-compose.yml`
@@ -127,6 +130,11 @@ from PostgreSQL, so it remains unique across application restarts and concurrent
 requests. Gaps are expected when a transaction rolls back after reserving a
 sequence value. During migration, the sequence is aligned above contract
 numbers previously issued by the local stub.
+
+Creating a contract also records a versioned `CreditContractCreated` domain
+event. The contract, its initial status history, and the corresponding
+`outbox_events` row are committed atomically in PostgreSQL. Outbox rows remain
+`PENDING` until the RabbitMQ relay planned for the next roadmap phase is added.
 
 ## Healthcheck
 

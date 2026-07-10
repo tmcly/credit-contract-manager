@@ -20,11 +20,12 @@ import java.util.Objects;
  *   <li>Fetch the client snapshot from the external registry.</li>
  *   <li>Obtain the approved credit limit from the risk engine.</li>
  *   <li>Generate the next sequential contract number.</li>
- *   <li>Assemble and return the {@link CreditContract} aggregate.</li>
+ *   <li>Assemble and persist the {@link CreditContract} aggregate.</li>
  * </ol>
  *
- * <p>This use case is the "S" in SOLID — it does exactly one thing.
- * Persistence is deferred to a future use case / repository port.
+ * <p>This use case is the "S" in SOLID — it orchestrates one business action.
+ * The repository adapter atomically persists the aggregate and its pending
+ * domain events without exposing outbox mechanics here.
  */
 @Service
 public class CreateContractUseCase {

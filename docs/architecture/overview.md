@@ -20,6 +20,8 @@ flowchart LR
     STUBS["Local service adapters"] -. implement .-> PORTS
     PERSISTENCE["JPA persistence adapter"] -. implement .-> PORTS
     PERSISTENCE --> PG[("PostgreSQL")]
+    OUTBOX["Outbox persistence adapter"] --> PG
+    PERSISTENCE --> OUTBOX
 ```
 
 The domain has no dependency on Spring, JPA, HTTP, PostgreSQL, or messaging.
@@ -33,6 +35,7 @@ system boundary.
 br.com.creditcontract
 ├── domain
 │   ├── entity
+│   ├── event
 │   ├── enums
 │   ├── exception
 │   └── valueobject
@@ -46,6 +49,7 @@ br.com.creditcontract
         ├── fake
         ├── persistence
         │   ├── jpa
+        │   ├── outbox
         │   └── postgres
         └── stub
 ```
@@ -91,6 +95,7 @@ statuses, non-negative monetary values, uniqueness, and referential integrity.
 ```mermaid
 erDiagram
     CREDIT_CONTRACTS ||--o{ CONTRACT_STATUS_HISTORY : "records"
+    CREDIT_CONTRACTS ||--o{ OUTBOX_EVENTS : "emits logically"
 
     CREDIT_CONTRACTS {
         uuid id PK
@@ -117,6 +122,24 @@ erDiagram
         varchar reason
         timestamp changed_at
     }
+
+    OUTBOX_EVENTS {
+        uuid event_id PK
+        uuid aggregate_id
+        varchar aggregate_type
+        varchar event_type
+        jsonb payload
+        integer schema_version
+        timestamp occurred_at
+        uuid correlation_id
+        uuid causation_id
+        varchar publication_status
+        integer publication_attempts
+        timestamp next_attempt_at
+        timestamp published_at
+        text last_error
+        timestamp created_at
+    }
 ```
 
 The status history is the audit trail for lifecycle transitions. The initial
@@ -139,7 +162,7 @@ sequenceDiagram
     UseCase->>ClientFake: findByDocument
     UseCase->>LimitStub: getLimitFor
     UseCase->>NumberGenerator: next (PostgreSQL sequence)
-    UseCase->>PostgreSQL: save contract + initial history
+    UseCase->>PostgreSQL: save contract + initial history + outbox event
     UseCase-->>REST: CreditContract
     REST-->>Client: 201 Created
 ```
@@ -154,6 +177,19 @@ adapter will introduce profile-specific activation. Sequence gaps are valid afte
 rollbacks because uniqueness is required but gapless numbering is not.
 The Flyway upgrade aligns the sequence with numbers previously issued by the
 local stub before PostgreSQL becomes the active generator.
+
+## Transactional outbox
+
+Contract creation records a versioned `CreditContractCreated` event inside the
+aggregate. The persistence adapter stores the contract, its initial status
+history, and a JSON representation of that event in `outbox_events` within the
+same PostgreSQL transaction. If any write fails, all of them roll back together.
+
+Event JSON serialization and outbox SQL remain outbound concerns, so the domain
+does not depend on Jackson, JDBC, JPA, or messaging. Pending aggregate events are
+removed from memory only after the transaction commits. Outbox rows start as
+`PENDING`; publishing them to RabbitMQ, including retries and publisher confirms,
+is intentionally deferred to the next roadmap phase.
 
 ## Target evolution
 
