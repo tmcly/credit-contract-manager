@@ -1,6 +1,6 @@
 package br.com.creditcontract.domain.valueobject;
 
-import br.com.creditcontract.domain.exception.InvalidCpfException;
+import br.com.creditcontract.domain.exception.InvalidDocumentNumberException;
 
 import java.util.regex.Pattern;
 
@@ -10,7 +10,7 @@ import java.util.regex.Pattern;
  * <p>The constructor accepts formatted or unformatted values, normalizes the
  * representation, rejects unsupported characters and validates check digits.
  */
-public record Cpf(String value) {
+public record DocumentNumber(String value) {
 
 	private static final Pattern ALLOWED_FORMAT = Pattern.compile("[0-9./\\-\\s]+");
 	private static final Pattern NON_DIGITS = Pattern.compile("\\D");
@@ -18,24 +18,24 @@ public record Cpf(String value) {
 	private static final int[] CPF_FIRST_DIGIT_WEIGHTS = {10, 9, 8, 7, 6, 5, 4, 3, 2};
 	private static final int[] CPF_SECOND_DIGIT_WEIGHTS = {11, 10, 9, 8, 7, 6, 5, 4, 3, 2};
 
-	public Cpf {
+	public DocumentNumber {
 		if (value == null || value.isBlank()) {
-			throw new InvalidCpfException("cpf is required");
+			throw new InvalidDocumentNumberException("documentNumber is required");
 		}
 		if (!ALLOWED_FORMAT.matcher(value).matches()) {
-			throw new InvalidCpfException("cpf contains invalid characters");
+			throw new InvalidDocumentNumberException("documentNumber contains invalid characters");
 		}
 
 		String digits = NON_DIGITS.matcher(value).replaceAll("");
 		if (!isValidCpf(digits)) {
-			throw new InvalidCpfException("cpf must be valid");
+			throw new InvalidDocumentNumberException("documentNumber must be valid");
 		}
 
 		value = digits;
 	}
 
-	public static Cpf from(String value) {
-		return new Cpf(value);
+	public static DocumentNumber from(String value) {
+		return new DocumentNumber(value);
 	}
 
 	public int finalDigit() {

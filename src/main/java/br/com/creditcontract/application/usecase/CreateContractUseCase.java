@@ -49,8 +49,8 @@ public class CreateContractUseCase {
 	public CreditContract execute(CreateContractInput input) {
 		Objects.requireNonNull(input, "input cannot be null");
 
-		Client client = clientDataProvider.findByCpf(input.cpf());
-		MonetaryAmount creditLimit = creditLimitProvider.getLimitFor(input.cpf());
+		Client client = clientDataProvider.findByDocument(input.documentNumber());
+		MonetaryAmount creditLimit = creditLimitProvider.getLimitFor(input.documentNumber());
 		String contractNumber = contractNumberGenerator.next();
 		ContractId contractId = ContractId.generate();
 

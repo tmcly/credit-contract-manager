@@ -1,7 +1,7 @@
 package br.com.creditcontract.adapter.out.stub;
 
 import br.com.creditcontract.application.port.out.CreditLimitProvider;
-import br.com.creditcontract.domain.valueobject.Cpf;
+import br.com.creditcontract.domain.valueobject.DocumentNumber;
 import br.com.creditcontract.domain.valueobject.MonetaryAmount;
 import org.springframework.stereotype.Component;
 
@@ -18,8 +18,8 @@ import java.math.BigDecimal;
 public class StubCreditLimitProvider implements CreditLimitProvider {
 
 	@Override
-	public MonetaryAmount getLimitFor(Cpf cpf) {
-		int finalDigit = cpf.finalDigit();
+	public MonetaryAmount getLimitFor(DocumentNumber documentNumber) {
+		int finalDigit = documentNumber.finalDigit();
 
 		BigDecimal limit = switch (finalDigit) {
 			case 0, 1 -> new BigDecimal("1000.00");

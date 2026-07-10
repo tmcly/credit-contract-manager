@@ -67,7 +67,7 @@ src/main/java/br/com/creditcontract/
 # Create a contract
 curl -X POST http://localhost:8080/api/contracts \
   -H "Content-Type: application/json" \
-  -d '{"cpf": "529.982.247-25"}'
+  -d '{"documentNumber": "529.982.247-25"}'
 
 # Response: 201 Created
 # {

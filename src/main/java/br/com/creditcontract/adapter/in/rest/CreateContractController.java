@@ -3,7 +3,7 @@ package br.com.creditcontract.adapter.in.rest;
 import br.com.creditcontract.application.usecase.CreateContractInput;
 import br.com.creditcontract.application.usecase.CreateContractUseCase;
 import br.com.creditcontract.domain.entity.CreditContract;
-import br.com.creditcontract.domain.valueobject.Cpf;
+import br.com.creditcontract.domain.valueobject.DocumentNumber;
 import br.com.creditcontract.adapter.in.rest.dto.CreateContractRequest;
 import br.com.creditcontract.adapter.in.rest.dto.CreateContractResponse;
 import jakarta.validation.Valid;
@@ -31,7 +31,7 @@ public class CreateContractController {
 
 	@PostMapping
 	public ResponseEntity<CreateContractResponse> create(@Valid @RequestBody CreateContractRequest request) {
-		CreateContractInput input = new CreateContractInput(Cpf.from(request.cpf()));
+		CreateContractInput input = new CreateContractInput(DocumentNumber.from(request.documentNumber()));
 		CreditContract contract = createContractUseCase.execute(input);
 
 		CreateContractResponse response = CreateContractResponse.from(

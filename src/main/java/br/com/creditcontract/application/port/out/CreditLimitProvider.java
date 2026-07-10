@@ -1,7 +1,7 @@
 package br.com.creditcontract.application.port.out;
 
 import br.com.creditcontract.application.exception.LimitNotAvailableException;
-import br.com.creditcontract.domain.valueobject.Cpf;
+import br.com.creditcontract.domain.valueobject.DocumentNumber;
 import br.com.creditcontract.domain.valueobject.MonetaryAmount;
 
 /**
@@ -16,9 +16,9 @@ public interface CreditLimitProvider {
 	/**
 	 * Returns the approved credit limit for the given client.
 	 *
-	 * @param cpf validated client CPF
+	 * @param documentNumber validated client CPF
 	 * @return a positive monetary amount in the contract's currency
 	 * @throws LimitNotAvailableException if the engine cannot determine a limit
 	 */
-	MonetaryAmount getLimitFor(Cpf cpf);
+	MonetaryAmount getLimitFor(DocumentNumber documentNumber);
 }

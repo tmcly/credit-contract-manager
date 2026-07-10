@@ -2,7 +2,7 @@ package br.com.creditcontract.adapter.in.rest;
 
 import br.com.creditcontract.application.exception.ClientNotFoundException;
 import br.com.creditcontract.application.exception.LimitNotAvailableException;
-import br.com.creditcontract.domain.exception.InvalidCpfException;
+import br.com.creditcontract.domain.exception.InvalidDocumentNumberException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -49,12 +49,12 @@ public class RestExceptionHandler {
 		return problem;
 	}
 
-	@ExceptionHandler(InvalidCpfException.class)
-	ProblemDetail handleInvalidCpf(InvalidCpfException exception) {
+	@ExceptionHandler(InvalidDocumentNumberException.class)
+	ProblemDetail handleInvalidDocumentNumber(InvalidDocumentNumberException exception) {
 		ProblemDetail problem = ProblemDetail.forStatusAndDetail(
 				HttpStatus.BAD_REQUEST, exception.getMessage());
 		problem.setTitle("Invalid request");
-		problem.setType(URI.create("/errors/invalid-cpf"));
+		problem.setType(URI.create("/errors/invalid-document-number"));
 		return problem;
 	}
 }
