@@ -1,12 +1,14 @@
 package br.com.creditcontract.domain.entity;
 
 import br.com.creditcontract.domain.enums.ContractStatus;
-import br.com.creditcontract.domain.valueobject.Address;
 import br.com.creditcontract.domain.valueobject.Client;
 import br.com.creditcontract.domain.valueobject.ContractId;
 import br.com.creditcontract.domain.valueobject.MonetaryAmount;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -34,8 +36,7 @@ public class CreditContract {
 	private ContractStatus status;
 	private final MonetaryAmount creditLimit;
 	private final LocalDateTime createdAt;
-	private String blockReason;
-	private String cancellationReason;
+	private final List<ContractStatusHistory> statusHistory;
 	private LocalDateTime updatedAt;
 	private Long version;
 
@@ -48,6 +49,8 @@ public class CreditContract {
 		this.createdAt = builder.createdAt;
 		this.updatedAt = builder.createdAt;
 		this.version = 0L;
+		this.statusHistory = new ArrayList<>();
+		this.statusHistory.add(ContractStatusHistory.initial(this.status, this.createdAt));
 	}
 
 	/** Factory: creates a brand new contract in its initial state. */
@@ -75,6 +78,9 @@ public class CreditContract {
 	public LocalDateTime getCreatedAt() { return createdAt; }
 	public LocalDateTime getUpdatedAt() { return updatedAt; }
 	public Long getVersion() { return version; }
+	public List<ContractStatusHistory> getStatusHistory() {
+		return Collections.unmodifiableList(statusHistory);
+	}
 
 	// ---- Builder ----
 

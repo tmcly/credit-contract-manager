@@ -11,7 +11,8 @@ with strong emphasis on software design best practices.
 | Language | Java 21 (LTS) |
 | Framework | Spring Boot 3.5.x |
 | Build | Maven |
-| Database | ⚠️ NOT YET DEFINED (SQL vs NoSQL) — decision deferred |
+| Database | PostgreSQL 17 + Spring Data JPA + Flyway |
+| Integration tests | Testcontainers |
 
 ## Architecture (Clean Architecture + DDD + SOLID)
 
@@ -22,7 +23,7 @@ HTTP ──▶ adapter.in.rest ──▶ application.usecase ──▶ domain
                                 │
                                 │ invokes
                                 ▼
-                     application.port.out ◀──── implements ──── adapter.out.stub
+                     application.port.out ◀──── implements ──── adapter.out
 ```
 
 Inbound adapters translate external requests into use-case calls. The
@@ -45,7 +46,9 @@ src/main/java/br/com/creditcontract/
 │   └── exception/                     # use-case and integration errors
 └── adapter/
     ├── in/rest/                       # REST controllers and DTOs
-    └── out/stub/                      # local implementations of application ports
+    └── out/
+        ├── stub/                      # local external-service substitutes
+        └── persistence/jpa/           # PostgreSQL persistence adapter
 ```
 
 ## Current state
@@ -56,9 +59,11 @@ src/main/java/br/com/creditcontract/
 - ✅ CPF value object: normalization and check-digit validation
 - ✅ First use case: `CreateContractUseCase` (S of SOLID)
 - ✅ REST endpoint: `POST /api/contracts` — creates a contract via stubs
+- ✅ PostgreSQL persistence with client snapshot in `credit_contracts`
+- ✅ Generic status changes in `contract_status_history`
+- ✅ Flyway schema migration + Testcontainers integration test
 - ✅ Unit tests passing (29 tests: 11 stub + 5 use case + 3 controller + 10 domain)
 - ✅ Docker: `Dockerfile` (multi-stage) + `docker-compose.yml`
-- ⏳ Database: not defined
 - ⏳ Block / cancel / reanalyze use cases: not yet implemented
 
 ## API
@@ -75,7 +80,6 @@ curl -X POST http://localhost:8080/api/contracts \
 #   "contractNumber": "CT-2026-000001",
 #   "clientName": "Stub Client",
 #   "status": "DRAFT",
-#   "currency": "BRL",
 #   "creditLimit": "5000.00",
 #   "createdAt": "...",
 #   "version": 0
@@ -97,6 +101,9 @@ to BRL 15,000.00 according to the final digit of the CPF.
 ```bash
 docker compose up --build
 ```
+
+This starts both the application and PostgreSQL. Flyway applies the schema
+automatically and JPA only validates it (`ddl-auto=validate`).
 
 ## Healthcheck
 

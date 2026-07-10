@@ -4,6 +4,7 @@ import br.com.creditcontract.domain.enums.ContractStatus;
 import br.com.creditcontract.domain.valueobject.Address;
 import br.com.creditcontract.domain.valueobject.Client;
 import br.com.creditcontract.domain.valueobject.ContractId;
+import br.com.creditcontract.domain.valueobject.DocumentNumber;
 import br.com.creditcontract.domain.valueobject.MonetaryAmount;
 import br.com.creditcontract.domain.valueobject.ZipCode;
 import org.junit.jupiter.api.Test;
@@ -19,7 +20,7 @@ class CreditContractTest {
 		return CreditContract.create(
 				ContractId.generate(),
 				"CT-2026-000001",
-				new Client("Maria Silva",
+				new Client(DocumentNumber.from("52998224725"), "Maria Silva",
 						new Address("PR", "Curitiba", "Rua das Flores", "123", new ZipCode("80010-000"))),
 				MonetaryAmount.reais(new BigDecimal("5000.00"))
 		);
@@ -32,6 +33,9 @@ class CreditContractTest {
 		assertEquals(0L, contract.getVersion());
 		assertNotNull(contract.getCreatedAt());
 		assertNotNull(contract.getUpdatedAt());
+		assertEquals(1, contract.getStatusHistory().size());
+		assertNull(contract.getStatusHistory().getFirst().previousStatus());
+		assertEquals(ContractStatus.DRAFT, contract.getStatusHistory().getFirst().newStatus());
 	}
 
 	@Test

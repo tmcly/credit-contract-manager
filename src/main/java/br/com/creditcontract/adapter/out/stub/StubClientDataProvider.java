@@ -18,6 +18,7 @@ public class StubClientDataProvider implements ClientDataProvider {
 	@Override
 	public Client findByDocument(DocumentNumber documentNumber) {
 		return new Client(
+				documentNumber,
 				"Stub Client",
 				new Address("PR", "Curitiba", "Rua XV de Novembro", "1000",
 						new ZipCode("80020-310"))
