@@ -5,7 +5,7 @@ import br.com.creditcontract.domain.exception.InvalidDocumentNumberException;
 import java.util.regex.Pattern;
 
 /**
- * Brazilian CPF or CNPJ represented by digits only.
+ * Brazilian CPF represented by digits only.
  *
  * <p>The constructor accepts formatted or unformatted values, normalizes the
  * representation, rejects unsupported characters and validates check digits.
@@ -17,8 +17,6 @@ public record DocumentNumber(String value) {
 
 	private static final int[] CPF_FIRST_DIGIT_WEIGHTS = {10, 9, 8, 7, 6, 5, 4, 3, 2};
 	private static final int[] CPF_SECOND_DIGIT_WEIGHTS = {11, 10, 9, 8, 7, 6, 5, 4, 3, 2};
-	private static final int[] CNPJ_FIRST_DIGIT_WEIGHTS = {5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2};
-	private static final int[] CNPJ_SECOND_DIGIT_WEIGHTS = {6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2};
 
 	public DocumentNumber {
 		if (value == null || value.isBlank()) {
@@ -29,8 +27,8 @@ public record DocumentNumber(String value) {
 		}
 
 		String digits = NON_DIGITS.matcher(value).replaceAll("");
-		if (!isValidCpf(digits) && !isValidCnpj(digits)) {
-			throw new InvalidDocumentNumberException("documentNumber must be a valid CPF or CNPJ");
+		if (!isValidCpf(digits)) {
+			throw new InvalidDocumentNumberException("documentNumber must be valid");
 		}
 
 		value = digits;
@@ -48,12 +46,6 @@ public record DocumentNumber(String value) {
 		return digits.length() == 11
 				&& !hasRepeatedDigits(digits)
 				&& matchesCheckDigits(digits, CPF_FIRST_DIGIT_WEIGHTS, CPF_SECOND_DIGIT_WEIGHTS);
-	}
-
-	private static boolean isValidCnpj(String digits) {
-		return digits.length() == 14
-				&& !hasRepeatedDigits(digits)
-				&& matchesCheckDigits(digits, CNPJ_FIRST_DIGIT_WEIGHTS, CNPJ_SECOND_DIGIT_WEIGHTS);
 	}
 
 	private static boolean matchesCheckDigits(String digits, int[] firstWeights, int[] secondWeights) {

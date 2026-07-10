@@ -26,12 +26,12 @@ class StubCreditLimitProviderTest {
 			"10000000108, 10000.00",
 			"10000000019, 15000.00"
 	})
-	void shouldAssignLimitAccordingToFinalDocumentDigit(String documentNumber, BigDecimal expectedLimit) {
+	void shouldAssignLimitAccordingToFinalCpfDigit(String documentNumber, BigDecimal expectedLimit) {
 		assertEquals(expectedLimit, provider.getLimitFor(DocumentNumber.from(documentNumber)).amount());
 	}
 
 	@Test
-	void shouldSupportFormattedDocumentNumber() {
+	void shouldSupportFormattedCpf() {
 		assertEquals(new BigDecimal("5000.00"),
 				provider.getLimitFor(DocumentNumber.from("529.982.247-25")).amount());
 	}

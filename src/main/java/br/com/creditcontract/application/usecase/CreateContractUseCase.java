@@ -47,7 +47,7 @@ public class CreateContractUseCase {
 	/**
 	 * Creates a new credit contract for the given client.
 	 *
-	 * @param input the document number of the client
+	 * @param input the CPF of the client
 	 * @return the newly created contract aggregate
 	 */
 	public CreditContract execute(CreateContractInput input) {

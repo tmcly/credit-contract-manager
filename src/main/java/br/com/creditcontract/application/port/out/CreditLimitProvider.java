@@ -16,8 +16,8 @@ public interface CreditLimitProvider {
 	/**
 	 * Returns the approved credit limit for the given client.
 	 *
-	 * @param documentNumber validated client document identifier
-	 * @return a positive monetary amount in Brazilian reais
+	 * @param documentNumber validated client CPF
+	 * @return a positive monetary amount in the contract's currency
 	 * @throws LimitNotAvailableException if the engine cannot determine a limit
 	 */
 	MonetaryAmount getLimitFor(DocumentNumber documentNumber);
