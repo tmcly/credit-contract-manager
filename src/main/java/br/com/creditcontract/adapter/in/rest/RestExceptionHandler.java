@@ -1,19 +1,21 @@
 package br.com.creditcontract.adapter.in.rest;
 
-import br.com.creditcontract.domain.port.ClientNotFoundException;
-import br.com.creditcontract.domain.port.LimitNotAvailableException;
+import br.com.creditcontract.application.exception.ClientNotFoundException;
+import br.com.creditcontract.application.exception.LimitNotAvailableException;
+import br.com.creditcontract.domain.exception.InvalidDocumentNumberException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.net.URI;
 
 /**
- * Maps domain exceptions to RFC 7807 {@link ProblemDetail} responses.
+ * Maps application and domain errors to RFC 7807 {@link ProblemDetail} responses.
  */
 @RestControllerAdvice
-public class GlobalExceptionHandler {
+public class RestExceptionHandler {
 
 	@ExceptionHandler(ClientNotFoundException.class)
 	ProblemDetail handleClientNotFound(ClientNotFoundException exception) {
@@ -33,12 +35,26 @@ public class GlobalExceptionHandler {
 		return problem;
 	}
 
-	@ExceptionHandler(IllegalArgumentException.class)
-	ProblemDetail handleBadRequest(IllegalArgumentException exception) {
+	@ExceptionHandler(MethodArgumentNotValidException.class)
+	ProblemDetail handleRequestValidation(MethodArgumentNotValidException exception) {
+		String detail = exception.getBindingResult().getFieldErrors().stream()
+				.findFirst()
+				.map(error -> error.getDefaultMessage() == null
+						? "request validation failed"
+						: error.getDefaultMessage())
+				.orElse("request validation failed");
+		ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, detail);
+		problem.setTitle("Invalid request");
+		problem.setType(URI.create("/errors/request-validation"));
+		return problem;
+	}
+
+	@ExceptionHandler(InvalidDocumentNumberException.class)
+	ProblemDetail handleInvalidDocumentNumber(InvalidDocumentNumberException exception) {
 		ProblemDetail problem = ProblemDetail.forStatusAndDetail(
 				HttpStatus.BAD_REQUEST, exception.getMessage());
 		problem.setTitle("Invalid request");
-		problem.setType(URI.create("/errors/bad-request"));
+		problem.setType(URI.create("/errors/invalid-document-number"));
 		return problem;
 	}
 }

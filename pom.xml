@@ -35,10 +35,16 @@
 			<artifactId>spring-boot-starter</artifactId>
 		</dependency>
 
-		<!-- Web: expõe os endpoints da camada de interfaces (REST) -->
+		<!-- Web: exposes REST endpoints through inbound adapters -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-web</artifactId>
+		</dependency>
+
+		<!-- Validation: validates HTTP request DTOs with Jakarta Bean Validation -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-validation</artifactId>
 		</dependency>
 
 		<!-- Actuator: healthcheck nativo do Spring Boot -->

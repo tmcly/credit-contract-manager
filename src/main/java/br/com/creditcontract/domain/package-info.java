@@ -7,12 +7,13 @@
  * CLEAN ARCHITECTURE / DDD RULE:
  *   - Do NOT import Spring, JPA, Web or any external framework here.
  *   - The domain does not know who consumes it nor where data is persisted.
- *   - If an external adapter is needed, declare an INTERFACE (port) here and
- *     provide the concrete implementation in the infrastructure layer.
+ *   - External capabilities required by use cases are declared as output
+ *     ports in the application layer and implemented by outbound adapters.
  *
  * Sub-packages:
  *   - entity/        : aggregate roots and entities (CreditContract)
  *   - valueobject/   : immutable value types (ContractId, MonetaryAmount, ...)
  *   - enums/         : domain enumerations (ContractStatus)
+ *   - exception/     : errors raised by domain rules and value objects
  */
 package br.com.creditcontract.domain;

@@ -1,9 +1,9 @@
 package br.com.creditcontract.application.usecase;
 
 import br.com.creditcontract.domain.entity.CreditContract;
-import br.com.creditcontract.domain.port.ClientDataProvider;
-import br.com.creditcontract.domain.port.ContractNumberGenerator;
-import br.com.creditcontract.domain.port.CreditLimitProvider;
+import br.com.creditcontract.application.port.out.ClientDataProvider;
+import br.com.creditcontract.application.port.out.ContractNumberGenerator;
+import br.com.creditcontract.application.port.out.CreditLimitProvider;
 import br.com.creditcontract.domain.valueobject.Client;
 import br.com.creditcontract.domain.valueobject.ContractId;
 import br.com.creditcontract.domain.valueobject.MonetaryAmount;

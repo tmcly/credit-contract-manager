@@ -1,14 +1,15 @@
 package br.com.creditcontract.application.usecase;
 
+import br.com.creditcontract.application.exception.ClientNotFoundException;
+import br.com.creditcontract.application.exception.LimitNotAvailableException;
+import br.com.creditcontract.application.port.out.ClientDataProvider;
+import br.com.creditcontract.application.port.out.ContractNumberGenerator;
+import br.com.creditcontract.application.port.out.CreditLimitProvider;
 import br.com.creditcontract.domain.entity.CreditContract;
 import br.com.creditcontract.domain.enums.ContractStatus;
-import br.com.creditcontract.domain.port.ClientDataProvider;
-import br.com.creditcontract.domain.port.ClientNotFoundException;
-import br.com.creditcontract.domain.port.ContractNumberGenerator;
-import br.com.creditcontract.domain.port.CreditLimitProvider;
-import br.com.creditcontract.domain.port.LimitNotAvailableException;
 import br.com.creditcontract.domain.valueobject.Address;
 import br.com.creditcontract.domain.valueobject.Client;
+import br.com.creditcontract.domain.valueobject.DocumentNumber;
 import br.com.creditcontract.domain.valueobject.MonetaryAmount;
 import br.com.creditcontract.domain.valueobject.ZipCode;
 import org.junit.jupiter.api.BeforeEach;
@@ -22,7 +23,6 @@ import java.math.BigDecimal;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -37,7 +37,7 @@ class CreateContractUseCaseTest {
 
 	private CreateContractUseCase useCase;
 
-	private static final String DOCUMENT = "12345678900";
+	private static final DocumentNumber DOCUMENT = DocumentNumber.from("52998224725");
 	private static final Client STUB_CLIENT = new Client(
 			"Alice Oliveira",
 			new Address("SP", "São Paulo", "Av. Paulista", "1000", new ZipCode("01310-000"))
@@ -91,9 +91,7 @@ class CreateContractUseCaseTest {
 	}
 
 	@Test
-	void inputShouldRejectBlankDocumentNumber() {
-		assertThrows(IllegalArgumentException.class, () -> new CreateContractInput(""));
-		assertThrows(IllegalArgumentException.class, () -> new CreateContractInput("   "));
-		assertThrows(IllegalArgumentException.class, () -> new CreateContractInput(null));
+	void inputShouldRejectNullDocumentNumber() {
+		assertThrows(NullPointerException.class, () -> new CreateContractInput(null));
 	}
 }

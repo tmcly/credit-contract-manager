@@ -1,6 +1,6 @@
 package br.com.creditcontract.adapter.out.stub;
 
-import br.com.creditcontract.domain.port.ContractNumberGenerator;
+import br.com.creditcontract.application.port.out.ContractNumberGenerator;
 import org.springframework.stereotype.Component;
 
 import java.time.Year;
