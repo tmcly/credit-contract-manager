@@ -3,6 +3,7 @@ package br.com.creditcontract.adapter.in.rest;
 import br.com.creditcontract.application.exception.ClientNotFoundException;
 import br.com.creditcontract.application.exception.CreditContractNotFoundException;
 import br.com.creditcontract.domain.exception.InvalidDocumentNumberException;
+import br.com.creditcontract.domain.exception.InvalidContractTransitionException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -55,6 +56,15 @@ public class RestExceptionHandler {
 				HttpStatus.BAD_REQUEST, exception.getMessage());
 		problem.setTitle("Invalid request");
 		problem.setType(URI.create("/errors/invalid-document-number"));
+		return problem;
+	}
+
+	@ExceptionHandler(InvalidContractTransitionException.class)
+	ProblemDetail handleInvalidContractTransition(InvalidContractTransitionException exception) {
+		ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+				HttpStatus.CONFLICT, exception.getMessage());
+		problem.setTitle("Invalid contract transition");
+		problem.setType(URI.create("/errors/invalid-contract-transition"));
 		return problem;
 	}
 }

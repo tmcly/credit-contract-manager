@@ -78,7 +78,9 @@ entities.
 
 Contracts are created as `DRAFT` without a limit. Analysis first moves them to
 `UNDER_REVIEW`, then to `APPROVED` with a positive limit or `REJECTED` without a
-limit. Every transition is explicit in the aggregate and appended to history.
+limit. Approval does not activate the credit: the client must explicitly accept
+the contract before a future provisioning flow can move it to `ACTIVE`. Every
+transition is explicit in the aggregate and appended to history.
 
 ```mermaid
 stateDiagram-v2
@@ -86,6 +88,8 @@ stateDiagram-v2
     DRAFT --> UNDER_REVIEW: startCreditAnalysis
     UNDER_REVIEW --> APPROVED: approveCreditAnalysis(limit)
     UNDER_REVIEW --> REJECTED: rejectCreditAnalysis(reason)
+    APPROVED --> ACCEPTED: accept
+    ACCEPTED --> ACTIVE: future provisioning
 ```
 
 ## Persistence boundary
@@ -191,6 +195,9 @@ sequenceDiagram
     end
     Client->>API: GET /api/contracts/{id}
     API-->>Client: Current eventual state
+    Client->>API: POST /api/contracts/{id}/acceptance
+    API->>DB: ACCEPTED + history + CreditContractAccepted
+    DB->>MQ: Relay credit-contract.accepted.v1
 ```
 
 The consumer uses two database transactions around the analysis provider. This
@@ -198,6 +205,13 @@ makes `UNDER_REVIEW` durable before the external work and lets re-delivery resum
 after a crash. Terminal `APPROVED` and `REJECTED` contracts ignore duplicate
 creation events. Contract numbers still come from a PostgreSQL sequence, while
 client-registry and analysis integrations remain deterministic local substitutes.
+
+`CreditAnalysisApproved` can notify external channels that an offer is ready.
+Client acceptance is a separate synchronous command and emits
+`CreditContractAccepted` to the durable `credit-contract.activation.requests`
+queue. A future provisioning consumer will own `ACCEPTED -> ACTIVE` and emit the
+separate `CreditContractActivated` fact; that activation is not simulated by the
+current application.
 
 ## Transactional outbox
 

@@ -8,6 +8,8 @@ import br.com.creditcontract.domain.valueobject.Client;
 import br.com.creditcontract.domain.valueobject.ContractId;
 import br.com.creditcontract.domain.valueobject.DocumentNumber;
 import br.com.creditcontract.domain.valueobject.ZipCode;
+import br.com.creditcontract.domain.enums.ContractStatus;
+import br.com.creditcontract.domain.valueobject.MonetaryAmount;
 import org.junit.jupiter.api.Test;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -24,6 +26,10 @@ import org.testcontainers.rabbitmq.RabbitMQContainer;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Map;
+import java.util.List;
+import java.util.UUID;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -94,6 +100,40 @@ class RabbitMqOutboxIntegrationTest {
 		assertEquals("PUBLISHED", outbox.get("publication_status"));
 		assertEquals(0, outbox.get("publication_attempts"));
 		assertNotNull(outbox.get("published_at"));
+	}
+
+	@Test
+	void shouldRouteAcceptedContractToActivationRequestsQueue() {
+		LocalDateTime now = LocalDateTime.now();
+		CreditContract contract = CreditContract.rehydrate(
+				ContractId.generate(),
+				"CT-2026-000102",
+				new Client(
+						DocumentNumber.from("52998224725"),
+						"Maria Silva",
+						new Address("PR", "Curitiba", "Rua das Flores", "123",
+								new ZipCode("80010-000"))),
+				ContractStatus.APPROVED,
+				MonetaryAmount.reais(new BigDecimal("5000.00")),
+				now,
+				now,
+				2L,
+				List.of());
+		repository.save(contract);
+		UUID correlationId = UUID.randomUUID();
+		contract.accept(correlationId);
+		repository.save(contract);
+
+		relay.publishPending();
+
+		Message message = rabbitTemplate.receive(
+				RabbitMqTopology.CREDIT_CONTRACT_ACTIVATION_REQUESTS_QUEUE,
+				Duration.ofSeconds(10).toMillis());
+		assertNotNull(message);
+		assertEquals("CreditContractAccepted", message.getMessageProperties().getType());
+		assertEquals(correlationId.toString(), message.getMessageProperties().getCorrelationId());
+		assertTrue(new String(message.getBody(), StandardCharsets.UTF_8)
+				.contains(contract.getId().value().toString()));
 	}
 
 	private CreditContract sampleContract() {

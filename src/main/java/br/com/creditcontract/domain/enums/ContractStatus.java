@@ -13,6 +13,7 @@ public enum ContractStatus {
 	UNDER_REVIEW,
 	APPROVED,
 	REJECTED,
+	ACCEPTED,
 	ACTIVE,
 	BLOCKED,
 	CANCELLED

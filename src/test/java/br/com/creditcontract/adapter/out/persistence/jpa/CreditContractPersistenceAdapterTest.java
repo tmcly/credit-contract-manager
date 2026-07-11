@@ -6,11 +6,13 @@ import br.com.creditcontract.application.port.out.CreditContractRepository;
 import br.com.creditcontract.domain.entity.CreditContract;
 import br.com.creditcontract.domain.enums.ContractStatus;
 import br.com.creditcontract.domain.event.CreditContractCreated;
+import br.com.creditcontract.domain.event.CreditContractAccepted;
 import br.com.creditcontract.domain.valueobject.Address;
 import br.com.creditcontract.domain.valueobject.Client;
 import br.com.creditcontract.domain.valueobject.ContractId;
 import br.com.creditcontract.domain.valueobject.DocumentNumber;
 import br.com.creditcontract.domain.valueobject.ZipCode;
+import br.com.creditcontract.domain.valueobject.MonetaryAmount;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration;
@@ -27,6 +29,10 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.util.Map;
+import java.util.List;
+import java.util.UUID;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -113,5 +119,47 @@ class CreditContractPersistenceAdapterTest {
 		assertTrue(payload.contains("\"clientDocumentNumber\": \"52998224725\""));
 		assertFalse(payload.contains("Maria Silva"));
 		assertTrue(contract.getDomainEvents().isEmpty());
+	}
+
+	@Test
+	@Transactional(propagation = Propagation.NOT_SUPPORTED)
+	void shouldPersistAcceptanceAndItsOutboxEventAtomically() {
+		ContractId id = ContractId.generate();
+		LocalDateTime now = LocalDateTime.now();
+		CreditContract contract = CreditContract.rehydrate(
+				id,
+				"CT-2026-000302",
+				new Client(
+						DocumentNumber.from("52998224725"),
+						"Maria Silva",
+						new Address("PR", "Curitiba", "Rua das Flores", "123",
+								new ZipCode("80010-000"))),
+				ContractStatus.APPROVED,
+				MonetaryAmount.reais(new BigDecimal("5000.00")),
+				now,
+				now,
+				2L,
+				List.of());
+		repository.save(contract);
+
+		UUID correlationId = UUID.randomUUID();
+		contract.accept(correlationId);
+		CreditContractAccepted event = (CreditContractAccepted) contract.getDomainEvents().getFirst();
+		repository.save(contract);
+
+		CreditContract persisted = repository.findById(id).orElseThrow();
+		assertEquals(ContractStatus.ACCEPTED, persisted.getStatus());
+		assertEquals(ContractStatus.APPROVED,
+				persisted.getStatusHistory().getLast().previousStatus());
+		assertEquals(ContractStatus.ACCEPTED,
+				persisted.getStatusHistory().getLast().newStatus());
+
+		Map<String, Object> outbox = jdbcTemplate.queryForMap(
+				"SELECT * FROM outbox_events WHERE event_id = ?", event.eventId());
+		assertEquals("CreditContractAccepted", outbox.get("event_type"));
+		assertEquals(correlationId, outbox.get("correlation_id"));
+		assertNull(outbox.get("causation_id"));
+		assertTrue(outbox.get("payload").toString()
+				.contains("\"contractId\": \"" + id.value() + "\""));
 	}
 }

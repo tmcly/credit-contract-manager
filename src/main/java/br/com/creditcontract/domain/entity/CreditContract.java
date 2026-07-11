@@ -4,6 +4,7 @@ import br.com.creditcontract.domain.enums.ContractStatus;
 import br.com.creditcontract.domain.event.CreditAnalysisApproved;
 import br.com.creditcontract.domain.event.CreditAnalysisRejected;
 import br.com.creditcontract.domain.event.CreditContractCreated;
+import br.com.creditcontract.domain.event.CreditContractAccepted;
 import br.com.creditcontract.domain.event.DomainEvent;
 import br.com.creditcontract.domain.event.EventContext;
 import br.com.creditcontract.domain.exception.InvalidContractTransitionException;
@@ -161,8 +162,20 @@ public class CreditContract {
 		domainEvents.add(CreditAnalysisRejected.create(id, reason, updatedAt, context));
 	}
 
+	public void accept(UUID correlationId) {
+		requireStatus(ContractStatus.APPROVED, ContractStatus.ACCEPTED);
+		Objects.requireNonNull(correlationId, "correlation id is required");
+		transitionTo(ContractStatus.ACCEPTED, "Contract accepted by client");
+		domainEvents.add(CreditContractAccepted.create(id, updatedAt, correlationId));
+	}
+
 	public boolean hasCreditAnalysisFinished() {
-		return status == ContractStatus.APPROVED || status == ContractStatus.REJECTED;
+		return status == ContractStatus.APPROVED
+				|| status == ContractStatus.REJECTED
+				|| status == ContractStatus.ACCEPTED
+				|| status == ContractStatus.ACTIVE
+				|| status == ContractStatus.BLOCKED
+				|| status == ContractStatus.CANCELLED;
 	}
 
 	private void requireStatus(ContractStatus expected, ContractStatus target) {
@@ -188,6 +201,7 @@ public class CreditContract {
 			throw new IllegalArgumentException(status + " contract cannot have a credit limit");
 		}
 		if ((status == ContractStatus.APPROVED
+				|| status == ContractStatus.ACCEPTED
 				|| status == ContractStatus.ACTIVE
 				|| status == ContractStatus.BLOCKED)
 				&& (creditLimit == null || creditLimit.amount().signum() <= 0)) {
