@@ -6,6 +6,8 @@ import br.com.creditcontract.application.port.out.ContractNumberGenerator;
 import br.com.creditcontract.application.port.out.CreditContractRepository;
 import br.com.creditcontract.domain.valueobject.Client;
 import br.com.creditcontract.domain.valueobject.ContractId;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.Objects;
@@ -26,6 +28,7 @@ import java.util.Objects;
  */
 @Service
 public class CreateContractUseCase {
+	private static final Logger LOGGER = LoggerFactory.getLogger(CreateContractUseCase.class);
 
 	private final ClientDataProvider clientDataProvider;
 	private final ContractNumberGenerator contractNumberGenerator;
@@ -55,6 +58,13 @@ public class CreateContractUseCase {
 		CreditContract contract = CreditContract.create(
 				contractId, contractNumber, client, input.correlationId());
 		creditContractRepository.save(contract);
+		LOGGER.atInfo()
+				.addKeyValue("event", "credit_contract_created")
+				.addKeyValue("contractId", contractId.asString())
+				.addKeyValue("contractNumber", contractNumber)
+				.addKeyValue("contractStatus", contract.getStatus())
+				.addKeyValue("correlationId", input.correlationId())
+				.log("Credit contract created");
 		return contract;
 	}
 }

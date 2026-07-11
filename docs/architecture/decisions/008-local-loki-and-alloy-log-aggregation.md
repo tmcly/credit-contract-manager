@@ -51,3 +51,9 @@ Prometheus and Grafana decisions.
   high availability.
 - Current logfmt-style messages support text search, but JSON logging would
   enable richer field parsing and should include explicit CPF/LGPD safeguards.
+
+## Later amendment
+
+ADR 009 adds structured JSON application logging, safe operational fields, and
+bounded Loki labels. Infrastructure collection and retention decisions in this
+ADR remain unchanged.

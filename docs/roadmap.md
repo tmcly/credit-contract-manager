@@ -34,6 +34,8 @@ Already implemented:
 - inbox-based consumer idempotency, bounded retries, DLQ, correlation, and messaging metrics;
 - local Prometheus collection and a provisioned Grafana messaging dashboard;
 - local Docker log aggregation through Grafana Alloy, Loki, and Grafana.
+- correlated structured JSON application logs with safe fields and provisioned
+  Grafana filters.
 
 ## Phase 1: Generate contract numbers with PostgreSQL ✅
 
@@ -298,7 +300,7 @@ unless a concrete requirement changes priority:
 - optimistic-lock conflict handling;
 - GitHub Actions CI with unit and integration tests;
 - API authentication and authorization;
-- CPF masking, sensitive-data logging rules, and broader LGPD review;
+- broader LGPD, log-retention, and observability-access review;
 - richer OpenAPI examples and error contracts;
 - production secrets and environment-specific configuration;
 - distributed tracing;

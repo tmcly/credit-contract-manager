@@ -278,4 +278,9 @@ flowchart LR
 
 Alloy discovers local containers through the read-only Docker socket and labels
 their logs by Compose service. Loki keeps seven days locally, and Grafana offers
-service and free-text filters, including searches by `correlationId`.
+structured application filters for level, event, `correlationId`, and
+`contractId`. Alloy promotes only bounded `level` and `event` values to Loki
+labels; identifiers stay inside each JSON log line to avoid high-cardinality
+indexes. CPF, client snapshots, addresses, payloads, credit limits, analysis
+reasons, and raw exception messages are excluded by the application logging
+policy.

@@ -98,13 +98,22 @@ public class OutboxRelay {
 			if (result.confirmed()) {
 				markPublished(event.eventId());
 				publishedCounter.increment();
-				LOGGER.info("event=outbox_published eventId={} eventType={} correlationId={} causationId={}",
-						event.eventId(), event.eventType(), event.correlationId(), event.causationId());
+				LOGGER.atInfo()
+						.addKeyValue("event", "outbox_published")
+						.addKeyValue("eventId", event.eventId())
+						.addKeyValue("eventType", event.eventType())
+						.addKeyValue("correlationId", event.correlationId())
+						.addKeyValue("causationId", event.causationId())
+						.log("Outbox event published");
 			} else {
 				markForRetry(event.eventId(), result.failureReason());
 				failureCounter.increment();
-				LOGGER.warn("event=outbox_publish_failed eventId={} eventType={} correlationId={} reason={}",
-						event.eventId(), event.eventType(), event.correlationId(), result.failureReason());
+				LOGGER.atWarn()
+						.addKeyValue("event", "outbox_publish_failed")
+						.addKeyValue("eventId", event.eventId())
+						.addKeyValue("eventType", event.eventType())
+						.addKeyValue("correlationId", event.correlationId())
+						.log("Outbox event publication failed");
 			}
 		}
 	}
