@@ -3,6 +3,9 @@ package br.com.creditcontract.adapter.out.messaging.rabbitmq;
 import br.com.creditcontract.application.port.out.EventPublication;
 import br.com.creditcontract.application.port.out.EventPublicationResult;
 import br.com.creditcontract.application.port.out.EventPublisher;
+import br.com.creditcontract.domain.event.CreditAnalysisApproved;
+import br.com.creditcontract.domain.event.CreditAnalysisRejected;
+import br.com.creditcontract.domain.event.CreditContractCreated;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageBuilder;
 import org.springframework.amqp.core.MessageDeliveryMode;
@@ -58,8 +61,14 @@ public class RabbitMqEventPublisher implements EventPublisher {
 	}
 
 	private String routingKey(EventPublication event) {
-		if ("CreditContractCreated".equals(event.eventType()) && event.schemaVersion() == 1) {
+		if (CreditContractCreated.EVENT_TYPE.equals(event.eventType()) && event.schemaVersion() == 1) {
 			return RabbitMqTopology.CREDIT_CONTRACT_CREATED_ROUTING_KEY;
+		}
+		if (CreditAnalysisApproved.EVENT_TYPE.equals(event.eventType()) && event.schemaVersion() == 1) {
+			return RabbitMqTopology.CREDIT_ANALYSIS_APPROVED_ROUTING_KEY;
+		}
+		if (CreditAnalysisRejected.EVENT_TYPE.equals(event.eventType()) && event.schemaVersion() == 1) {
+			return RabbitMqTopology.CREDIT_ANALYSIS_REJECTED_ROUTING_KEY;
 		}
 		throw new IllegalArgumentException(
 				"unsupported event routing: " + event.eventType() + " v" + event.schemaVersion());

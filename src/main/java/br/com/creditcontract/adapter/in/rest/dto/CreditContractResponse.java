@@ -4,23 +4,17 @@ import br.com.creditcontract.domain.valueobject.MonetaryAmount;
 
 import java.time.LocalDateTime;
 
-/**
- * Response body for {@code POST /api/contracts}.
- *
- * <p>DTOs are plain data carriers — no domain logic, no validation beyond
- * null-safety. The controller maps the domain aggregate into this shape.
- */
-public record CreateContractResponse(
+/** Current credit-contract representation returned by create and query APIs. */
+public record CreditContractResponse(
 		String id,
 		String contractNumber,
 		String clientName,
 		String status,
 		String creditLimit,
 		LocalDateTime createdAt,
-		Long version
-) {
+		Long version) {
 
-	public static CreateContractResponse from(
+	public static CreditContractResponse from(
 			String id,
 			String contractNumber,
 			String clientName,
@@ -28,14 +22,13 @@ public record CreateContractResponse(
 			MonetaryAmount creditLimit,
 			LocalDateTime createdAt,
 			Long version) {
-		return new CreateContractResponse(
+		return new CreditContractResponse(
 				id,
 				contractNumber,
 				clientName,
 				status,
-				creditLimit.amount().toPlainString(),
+				creditLimit == null ? null : creditLimit.amount().toPlainString(),
 				createdAt,
-				version
-		);
+				version);
 	}
 }

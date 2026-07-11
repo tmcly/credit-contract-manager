@@ -16,7 +16,7 @@ Already implemented:
 - CPF-only `DocumentNumber` validation;
 - DDD-inspired `CreditContract` aggregate and value objects;
 - inbound REST and outbound port/adapter boundaries;
-- deterministic credit-limit stub;
+- deterministic credit-analysis stub with approval and rejection;
 - PostgreSQL persistence through an isolated JPA adapter;
 - Flyway-managed schema;
 - client snapshot stored with the contract;
@@ -27,6 +27,8 @@ Already implemented:
 - atomic PostgreSQL transactional outbox persistence;
 - confirmed RabbitMQ publication from bounded outbox batches;
 - durable contract-event exchange, analysis queue, and binding;
+- asynchronous credit analysis with state-aware duplicate handling;
+- query endpoint for eventually consistent contract results;
 - Docker Compose local environment;
 - PostgreSQL integration tests with Testcontainers.
 
@@ -177,7 +179,13 @@ messaging topology.
 - Unconfirmed events remain eligible for retry.
 - The topology is declared by the application and reproducible locally.
 
-## Phase 5: Make credit analysis asynchronous
+## Phase 5: Make credit analysis asynchronous ✅
+
+Status: completed.
+
+Implementation note: ADR 005 resolves the decision gate. Contracts have no
+limit before approval, rejection is an explicit status, and analysis outcomes
+use separate `CreditAnalysisApproved` and `CreditAnalysisRejected` events.
 
 Suggested branch:
 
@@ -226,8 +234,9 @@ sequenceDiagram
 - Move credit-limit resolution out of the HTTP creation transaction.
 - Consume a contract-created or analysis-requested message.
 - Transition through `UNDER_REVIEW` and record history.
-- Apply the credit-engine result and publish `CreditAnalysisCompleted`.
-- Decide explicitly whether rejection requires a new `REJECTED` status.
+- Apply the credit-engine result and publish either `CreditAnalysisApproved` or
+  `CreditAnalysisRejected`.
+- Add the explicit `REJECTED` status.
 - Expose a query endpoint so clients can observe eventual completion.
 
 ### Acceptance criteria

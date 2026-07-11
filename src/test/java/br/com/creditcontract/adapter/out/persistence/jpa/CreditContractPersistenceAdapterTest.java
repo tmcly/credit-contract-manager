@@ -10,7 +10,6 @@ import br.com.creditcontract.domain.valueobject.Address;
 import br.com.creditcontract.domain.valueobject.Client;
 import br.com.creditcontract.domain.valueobject.ContractId;
 import br.com.creditcontract.domain.valueobject.DocumentNumber;
-import br.com.creditcontract.domain.valueobject.MonetaryAmount;
 import br.com.creditcontract.domain.valueobject.ZipCode;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,7 +26,6 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-import java.math.BigDecimal;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -76,8 +74,7 @@ class CreditContractPersistenceAdapterTest {
 				new Client(
 						DocumentNumber.from("52998224725"),
 						"Maria Silva",
-						new Address("PR", "Curitiba", "Rua das Flores", "123", new ZipCode("80010-000"))),
-				MonetaryAmount.reais(new BigDecimal("5000.00")));
+						new Address("PR", "Curitiba", "Rua das Flores", "123", new ZipCode("80010-000"))));
 
 		CreditContractCreated createdEvent =
 				(CreditContractCreated) contract.getDomainEvents().getFirst();
@@ -88,7 +85,7 @@ class CreditContractPersistenceAdapterTest {
 		assertEquals("52998224725", persisted.getClientDocumentNumber());
 		assertEquals("Maria Silva", persisted.getClientName());
 		assertEquals("80010000", persisted.getClientZipCode());
-		assertEquals(new BigDecimal("5000.00"), persisted.getCreditLimit());
+		assertNull(persisted.getCreditLimit());
 		assertEquals(ContractStatus.DRAFT, persisted.getStatus());
 		assertEquals(0L, persisted.getVersion());
 

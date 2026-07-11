@@ -1,6 +1,8 @@
 package br.com.creditcontract.adapter.out.persistence.outbox;
 
 import br.com.creditcontract.domain.event.CreditContractCreated;
+import br.com.creditcontract.domain.event.CreditAnalysisApproved;
+import br.com.creditcontract.domain.event.CreditAnalysisRejected;
 import br.com.creditcontract.domain.event.DomainEvent;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -23,6 +25,12 @@ public class OutboxEventSerializer {
 		if (event instanceof CreditContractCreated created) {
 			return serialize(created);
 		}
+		if (event instanceof CreditAnalysisApproved approved) {
+			return serialize(approved);
+		}
+		if (event instanceof CreditAnalysisRejected rejected) {
+			return serialize(rejected);
+		}
 		throw new IllegalArgumentException("unsupported domain event: " + event.eventType());
 	}
 
@@ -34,12 +42,35 @@ public class OutboxEventSerializer {
 		payload.put("clientDocumentNumber", event.clientDocumentNumber().value());
 		payload.put("occurredAt", event.occurredAt().toString());
 
+		return write(event, payload);
+	}
+
+	private String serialize(CreditAnalysisApproved event) {
+		ObjectNode payload = commonPayload(event);
+		payload.put("approvedLimit", event.approvedLimit().amount().toPlainString());
+		return write(event, payload);
+	}
+
+	private String serialize(CreditAnalysisRejected event) {
+		ObjectNode payload = commonPayload(event);
+		payload.put("reason", event.reason());
+		return write(event, payload);
+	}
+
+	private ObjectNode commonPayload(DomainEvent event) {
+		ObjectNode payload = objectMapper.createObjectNode();
+		payload.put("eventId", event.eventId().toString());
+		payload.put("contractId", event.aggregateId().value().toString());
+		payload.put("occurredAt", event.occurredAt().toString());
+		return payload;
+	}
+
+	private String write(DomainEvent event, ObjectNode payload) {
 		try {
 			return objectMapper.writeValueAsString(payload);
 		} catch (JsonProcessingException exception) {
 			throw new IllegalStateException(
-					"could not serialize event " + event.eventId(),
-					exception);
+					"could not serialize event " + event.eventId(), exception);
 		}
 	}
 }

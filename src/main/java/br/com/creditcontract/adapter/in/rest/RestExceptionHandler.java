@@ -1,7 +1,7 @@
 package br.com.creditcontract.adapter.in.rest;
 
 import br.com.creditcontract.application.exception.ClientNotFoundException;
-import br.com.creditcontract.application.exception.LimitNotAvailableException;
+import br.com.creditcontract.application.exception.CreditContractNotFoundException;
 import br.com.creditcontract.domain.exception.InvalidDocumentNumberException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -26,12 +26,12 @@ public class RestExceptionHandler {
 		return problem;
 	}
 
-	@ExceptionHandler(LimitNotAvailableException.class)
-	ProblemDetail handleLimitNotAvailable(LimitNotAvailableException exception) {
+	@ExceptionHandler(CreditContractNotFoundException.class)
+	ProblemDetail handleContractNotFound(CreditContractNotFoundException exception) {
 		ProblemDetail problem = ProblemDetail.forStatusAndDetail(
-				HttpStatus.UNPROCESSABLE_ENTITY, exception.getMessage());
-		problem.setTitle("Credit limit not available");
-		problem.setType(URI.create("/errors/limit-not-available"));
+				HttpStatus.NOT_FOUND, exception.getMessage());
+		problem.setTitle("Credit contract not found");
+		problem.setType(URI.create("/errors/credit-contract-not-found"));
 		return problem;
 	}
 

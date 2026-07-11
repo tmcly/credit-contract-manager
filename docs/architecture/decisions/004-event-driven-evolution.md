@@ -71,6 +71,10 @@ through a durable RabbitMQ topology. Rows become `PUBLISHED` only after a
 publisher confirmation; failures remain eligible for retry.
 
 JSON serialization, outbox storage, scheduling, and RabbitMQ access remain in
-outbound adapters. Consumer idempotency, exponential backoff, bounded poison
-message attempts, and dead-letter topology remain pending for later roadmap
-phases.
+outbound adapters. A general processed-message inbox, exponential backoff,
+bounded poison-message attempts, and dead-letter topology remain pending for
+later roadmap phases.
+
+ADR 005 refines the earlier generic `CreditAnalysisCompleted` example into the
+mutually exclusive `CreditAnalysisApproved` and `CreditAnalysisRejected`
+events used by the implemented analysis workflow.

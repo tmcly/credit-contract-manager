@@ -4,6 +4,7 @@ import br.com.creditcontract.adapter.out.persistence.outbox.OutboxEventPersisten
 import br.com.creditcontract.application.port.out.CreditContractRepository;
 import br.com.creditcontract.domain.entity.CreditContract;
 import br.com.creditcontract.domain.event.DomainEvent;
+import br.com.creditcontract.domain.valueobject.ContractId;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -11,6 +12,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 @Repository
 public class CreditContractPersistenceAdapter implements CreditContractRepository {
@@ -32,9 +34,22 @@ public class CreditContractPersistenceAdapter implements CreditContractRepositor
 	public void save(CreditContract contract) {
 		List<DomainEvent> eventsToPersist = List.copyOf(contract.getDomainEvents());
 
-		repository.saveAndFlush(mapper.toJpaEntity(contract));
+		CreditContractJpaEntity entity = repository.findDetailedById(contract.getId().value())
+				.map(existing -> {
+					mapper.updateJpaEntity(contract, existing);
+					return existing;
+				})
+				.orElseGet(() -> mapper.toJpaEntity(contract));
+
+		repository.saveAndFlush(entity);
 		outboxEventPersistenceAdapter.persist(eventsToPersist);
 		clearPersistedEventsAfterCommit(contract, eventsToPersist);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public Optional<CreditContract> findById(ContractId contractId) {
+		return repository.findDetailedById(contractId.value()).map(mapper::toDomain);
 	}
 
 	private void clearPersistedEventsAfterCommit(

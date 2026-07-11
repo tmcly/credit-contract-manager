@@ -5,7 +5,7 @@ import br.com.creditcontract.application.usecase.CreateContractUseCase;
 import br.com.creditcontract.domain.entity.CreditContract;
 import br.com.creditcontract.domain.valueobject.DocumentNumber;
 import br.com.creditcontract.adapter.in.rest.dto.CreateContractRequest;
-import br.com.creditcontract.adapter.in.rest.dto.CreateContractResponse;
+import br.com.creditcontract.adapter.in.rest.dto.CreditContractResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -30,11 +30,11 @@ public class CreateContractController {
 	}
 
 	@PostMapping
-	public ResponseEntity<CreateContractResponse> create(@Valid @RequestBody CreateContractRequest request) {
+	public ResponseEntity<CreditContractResponse> create(@Valid @RequestBody CreateContractRequest request) {
 		CreateContractInput input = new CreateContractInput(DocumentNumber.from(request.documentNumber()));
 		CreditContract contract = createContractUseCase.execute(input);
 
-		CreateContractResponse response = CreateContractResponse.from(
+		CreditContractResponse response = CreditContractResponse.from(
 				contract.getId().asString(),
 				contract.getContractNumber(),
 				contract.getClient().name(),

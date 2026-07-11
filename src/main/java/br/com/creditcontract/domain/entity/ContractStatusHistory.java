@@ -31,4 +31,13 @@ public record ContractStatusHistory(
 	public static ContractStatusHistory initial(ContractStatus status, LocalDateTime changedAt) {
 		return new ContractStatusHistory(UUID.randomUUID(), null, status, null, changedAt);
 	}
+
+	public static ContractStatusHistory transition(
+			ContractStatus previousStatus,
+			ContractStatus newStatus,
+			String reason,
+			LocalDateTime changedAt) {
+		return new ContractStatusHistory(
+				UUID.randomUUID(), previousStatus, newStatus, reason, changedAt);
+	}
 }
