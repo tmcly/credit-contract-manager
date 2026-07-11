@@ -25,6 +25,9 @@ public class ProcessCreditAnalysisUseCase {
 
 	public void execute(ProcessCreditAnalysisCommand command) {
 		Objects.requireNonNull(command, "command is required");
+		if (transactionService.wasProcessed(command.eventId())) {
+			return;
+		}
 		Optional<DocumentNumber> documentNumber =
 				transactionService.startOrResume(command.contractId());
 		if (documentNumber.isEmpty()) {
@@ -34,6 +37,7 @@ public class ProcessCreditAnalysisUseCase {
 		transactionService.complete(
 				command.contractId(),
 				result,
-				new EventContext(command.correlationId(), command.eventId()));
+				new EventContext(command.correlationId(), command.eventId()),
+				command.eventId());
 	}
 }

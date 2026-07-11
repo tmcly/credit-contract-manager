@@ -36,7 +36,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @SpringBootTest(properties = {
 		"credit-contract.outbox.initial-delay=1h",
 		"credit-contract.outbox.fixed-delay=1h",
-		"credit-contract.outbox.confirm-timeout=10s"
+		"credit-contract.outbox.confirm-timeout=10s",
+		"spring.rabbitmq.listener.simple.retry.initial-interval=10ms",
+		"spring.rabbitmq.listener.simple.retry.max-interval=20ms"
 })
 @Testcontainers
 class CreditAnalysisWorkflowIntegrationTest {
@@ -88,6 +90,7 @@ class CreditAnalysisWorkflowIntegrationTest {
 				(UUID) createdEvent.get("correlation_id")));
 		assertEquals(3, find(approved).getStatusHistory().size());
 		assertEquals(2, outboxCount(approved));
+		assertEquals(1, processedMessageCount((UUID) createdEvent.get("event_id")));
 
 		relay.publishPending();
 		Message approvedResult = rabbitTemplate.receive(
@@ -109,6 +112,26 @@ class CreditAnalysisWorkflowIntegrationTest {
 				"CreditAnalysisRejected",
 				null,
 				"Credit policy criteria not met");
+	}
+
+	@Test
+	void shouldDeadLetterPoisonMessageAfterBoundedRetries() {
+		UUID eventId = UUID.randomUUID();
+		UUID correlationId = UUID.randomUUID();
+		Message poison = org.springframework.amqp.core.MessageBuilder
+				.withBody("{}".getBytes(java.nio.charset.StandardCharsets.UTF_8))
+				.setMessageId(eventId.toString())
+				.setCorrelationId(correlationId.toString())
+				.build();
+
+		rabbitTemplate.send("", RabbitMqTopology.CREDIT_ANALYSIS_REQUESTS_QUEUE, poison);
+
+		Message deadLetter = rabbitTemplate.receive(
+				RabbitMqTopology.CREDIT_ANALYSIS_DLQ,
+				Duration.ofSeconds(10).toMillis());
+		assertNotNull(deadLetter);
+		assertEquals(eventId.toString(), deadLetter.getMessageProperties().getMessageId());
+		assertNotNull(deadLetter.getMessageProperties().getHeaders().get("x-death"));
 	}
 
 	private CreditContract create(String documentNumber) {
@@ -137,6 +160,13 @@ class CreditAnalysisWorkflowIntegrationTest {
 				"SELECT COUNT(*) FROM outbox_events WHERE aggregate_id = ?",
 				Integer.class,
 				contract.getId().value());
+	}
+
+	private int processedMessageCount(UUID eventId) {
+		return jdbcTemplate.queryForObject(
+				"SELECT COUNT(*) FROM processed_messages WHERE event_id = ?",
+				Integer.class,
+				eventId);
 	}
 
 	private void assertOutcome(

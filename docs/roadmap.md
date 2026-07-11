@@ -31,6 +31,7 @@ Already implemented:
 - query endpoint for eventually consistent contract results;
 - Docker Compose local environment;
 - PostgreSQL integration tests with Testcontainers.
+- inbox-based consumer idempotency, bounded retries, DLQ, correlation, and messaging metrics.
 
 ## Phase 1: Generate contract numbers with PostgreSQL ✅
 
@@ -246,7 +247,13 @@ sequenceDiagram
 - Reprocessing the same event does not repeat the business transition.
 - Clients can query the current state after receiving `201 Created`.
 
-## Phase 6: Add messaging resilience and observability
+## Phase 6: Add messaging resilience and observability ✅
+
+Status: completed.
+
+Implementation note: ADR 006 records the inbox transaction boundary, bounded
+consumer and outbox retries, durable dead-letter topology, correlation contract,
+Micrometer instrumentation, and the manual replay procedure.
 
 Suggested branch:
 

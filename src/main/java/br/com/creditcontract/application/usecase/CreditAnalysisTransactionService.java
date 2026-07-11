@@ -3,6 +3,7 @@ package br.com.creditcontract.application.usecase;
 import br.com.creditcontract.application.exception.CreditContractNotFoundException;
 import br.com.creditcontract.application.port.out.CreditAnalysisResult;
 import br.com.creditcontract.application.port.out.CreditContractRepository;
+import br.com.creditcontract.application.port.out.ProcessedMessageStore;
 import br.com.creditcontract.domain.entity.CreditContract;
 import br.com.creditcontract.domain.enums.ContractStatus;
 import br.com.creditcontract.domain.event.EventContext;
@@ -20,9 +21,17 @@ import java.util.Optional;
 public class CreditAnalysisTransactionService {
 
 	private final CreditContractRepository repository;
+	private final ProcessedMessageStore processedMessageStore;
 
-	public CreditAnalysisTransactionService(CreditContractRepository repository) {
+	public CreditAnalysisTransactionService(
+			CreditContractRepository repository,
+			ProcessedMessageStore processedMessageStore) {
 		this.repository = Objects.requireNonNull(repository);
+		this.processedMessageStore = Objects.requireNonNull(processedMessageStore);
+	}
+
+	public boolean wasProcessed(java.util.UUID eventId) {
+		return processedMessageStore.contains(eventId);
 	}
 
 	@Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -46,11 +55,14 @@ public class CreditAnalysisTransactionService {
 	public void complete(
 			ContractId contractId,
 			CreditAnalysisResult result,
-			EventContext eventContext) {
+			EventContext eventContext,
+			java.util.UUID consumedEventId) {
 		Objects.requireNonNull(result, "analysis result is required");
 		Objects.requireNonNull(eventContext, "event context is required");
 		CreditContract contract = find(contractId);
 		if (contract.hasCreditAnalysisFinished()) {
+			processedMessageStore.record(consumedEventId, "credit-analysis", contractId,
+					eventContext.correlationId());
 			return;
 		}
 		if (result instanceof CreditAnalysisResult.Approved approved) {
@@ -59,6 +71,8 @@ public class CreditAnalysisTransactionService {
 			contract.rejectCreditAnalysis(rejected.reason(), eventContext);
 		}
 		repository.save(contract);
+		processedMessageStore.record(consumedEventId, "credit-analysis", contractId,
+				eventContext.correlationId());
 	}
 
 	private CreditContract find(ContractId contractId) {

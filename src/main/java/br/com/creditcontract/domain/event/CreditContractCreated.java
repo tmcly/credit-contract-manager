@@ -48,6 +48,22 @@ public record CreditContractCreated(
 				null);
 	}
 
+	public static CreditContractCreated create(
+			ContractId aggregateId,
+			String contractNumber,
+			DocumentNumber clientDocumentNumber,
+			LocalDateTime occurredAt,
+			UUID correlationId) {
+		return new CreditContractCreated(
+				UUID.randomUUID(),
+				aggregateId,
+				contractNumber,
+				clientDocumentNumber,
+				occurredAt,
+				correlationId,
+				null);
+	}
+
 	@Override
 	public String aggregateType() {
 		return AGGREGATE_TYPE;
