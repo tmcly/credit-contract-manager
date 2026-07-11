@@ -12,6 +12,7 @@ with strong emphasis on software design best practices.
 | Framework | Spring Boot 3.5.x |
 | Build | Maven |
 | Database | PostgreSQL 17 + Spring Data JPA + Flyway |
+| Messaging | RabbitMQ 4 + Spring AMQP |
 | Integration tests | Testcontainers |
 
 ## Architecture (Clean Architecture + DDD + SOLID)
@@ -56,6 +57,7 @@ src/main/java/br/com/creditcontract/
     ├── in/rest/                       # REST controllers and DTOs
     └── out/
         ├── fake/                      # deterministic local integration fakes
+        ├── messaging/rabbitmq/        # durable topology and confirmed publisher
         ├── stub/                      # local external-service substitutes
         └── persistence/
             ├── jpa/                   # aggregate persistence adapter
@@ -76,6 +78,7 @@ src/main/java/br/com/creditcontract/
 - ✅ PostgreSQL persistence with client snapshot in `credit_contracts`
 - ✅ Generic status changes in `contract_status_history`
 - ✅ `CreditContractCreated` persisted through a transactional outbox
+- ✅ Confirmed outbox publication through RabbitMQ
 - ✅ Flyway schema migration + Testcontainers integration test
 - ✅ Automated unit and PostgreSQL integration tests
 - ✅ Docker: `Dockerfile` (multi-stage) + `docker-compose.yml`
@@ -122,8 +125,10 @@ the same snapshot.
 docker compose up --build
 ```
 
-This starts both the application and PostgreSQL. Flyway applies the schema
-automatically and JPA only validates it (`ddl-auto=validate`).
+This starts the application, PostgreSQL, and RabbitMQ. Flyway applies the schema
+automatically and JPA only validates it (`ddl-auto=validate`). RabbitMQ's local
+management UI is available at `http://localhost:15672` with the development
+credentials `credit_contract` / `credit_contract`.
 
 Contract numbers use the format `CT-YYYY-NNNNNN`. The numeric portion comes
 from PostgreSQL, so it remains unique across application restarts and concurrent
@@ -133,8 +138,14 @@ numbers previously issued by the local stub.
 
 Creating a contract also records a versioned `CreditContractCreated` domain
 event. The contract, its initial status history, and the corresponding
-`outbox_events` row are committed atomically in PostgreSQL. Outbox rows remain
-`PENDING` until the RabbitMQ relay planned for the next roadmap phase is added.
+`outbox_events` row are committed atomically in PostgreSQL. A bounded scheduled
+relay publishes pending rows to the durable `credit-contract.events` exchange
+and marks them `PUBLISHED` only after a RabbitMQ publisher confirmation. Failed
+publications remain `PENDING` and are retried later.
+
+The first durable binding routes `credit-contract.created.v1` messages to the
+`credit-analysis.requests` queue. The consumer that turns those messages into
+asynchronous credit analysis belongs to the next roadmap phase.
 
 ## Healthcheck
 
@@ -142,3 +153,6 @@ event. The contract, its initial status history, and the corresponding
 curl http://localhost:8080/health
 # {"status":"UP"}
 ```
+
+Detailed infrastructure health, including PostgreSQL and RabbitMQ connectivity,
+is available at `GET /actuator/health`.

@@ -64,8 +64,13 @@ consumer ecosystem becomes a concrete requirement.
 
 ## Implementation status
 
-The first increment is implemented: `CreditContract` records the versioned
-`CreditContractCreated` event, and PostgreSQL stores it in `outbox_events` in
-the same transaction as the aggregate. JSON serialization and outbox storage
-remain in outbound adapters. The RabbitMQ relay, publisher confirms, retries,
-and dead-letter topology remain pending for the next roadmap phases.
+The transactional outbox and RabbitMQ relay are implemented. `CreditContract`
+records the versioned `CreditContractCreated` event, PostgreSQL stores it in the
+same transaction as the aggregate, and a scheduled bounded relay publishes it
+through a durable RabbitMQ topology. Rows become `PUBLISHED` only after a
+publisher confirmation; failures remain eligible for retry.
+
+JSON serialization, outbox storage, scheduling, and RabbitMQ access remain in
+outbound adapters. Consumer idempotency, exponential backoff, bounded poison
+message attempts, and dead-letter topology remain pending for later roadmap
+phases.

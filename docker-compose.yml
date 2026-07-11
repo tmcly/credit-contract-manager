@@ -17,6 +17,24 @@ services:
       retries: 10
     restart: unless-stopped
 
+  rabbitmq:
+    image: rabbitmq:4.3.2-management-alpine
+    container_name: credit-contract-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: credit_contract
+      RABBITMQ_DEFAULT_PASS: credit_contract
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - credit-contract-rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
   credit-contract-manager:
     build:
       context: .
@@ -29,8 +47,13 @@ services:
       DB_URL: jdbc:postgresql://postgres:5432/credit_contracts
       DB_USERNAME: credit_contract
       DB_PASSWORD: credit_contract
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_USERNAME: credit_contract
+      RABBITMQ_PASSWORD: credit_contract
     depends_on:
       postgres:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
@@ -41,3 +64,4 @@ services:
 
 volumes:
   credit-contract-postgres-data:
+  credit-contract-rabbitmq-data:
