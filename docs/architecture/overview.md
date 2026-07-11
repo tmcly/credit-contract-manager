@@ -253,3 +253,18 @@ logs, and Micrometer metrics while preserving at-least-once delivery.
 
 See [the roadmap](../roadmap.md) for the implementation sequence and
 [the ADR index](decisions/README.md) for decision rationale.
+
+## Local observability
+
+```mermaid
+flowchart LR
+    APP["Application + Micrometer"] --> ENDPOINT["/actuator/prometheus"]
+    PROM["Prometheus"] -->|"scrapes every 5 seconds"| ENDPOINT
+    GRAFANA["Grafana"] -->|"PromQL queries"| PROM
+    USER["Developer"] -->|"messaging dashboard"| GRAFANA
+```
+
+Prometheus retains seven days of local metric history. Grafana's datasource and
+initial messaging dashboard are provisioned from the repository, so rebuilding
+the environment does not require clicking through setup screens. Loki is not
+part of this stack; logs currently remain available through container output.

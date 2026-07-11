@@ -30,8 +30,9 @@ Already implemented:
 - asynchronous credit analysis with state-aware duplicate handling;
 - query endpoint for eventually consistent contract results;
 - Docker Compose local environment;
-- PostgreSQL integration tests with Testcontainers.
-- inbox-based consumer idempotency, bounded retries, DLQ, correlation, and messaging metrics.
+- PostgreSQL integration tests with Testcontainers;
+- inbox-based consumer idempotency, bounded retries, DLQ, correlation, and messaging metrics;
+- local Prometheus collection and a provisioned Grafana messaging dashboard.
 
 ## Phase 1: Generate contract numbers with PostgreSQL ✅
 
@@ -299,7 +300,7 @@ unless a concrete requirement changes priority:
 - CPF masking, sensitive-data logging rules, and broader LGPD review;
 - richer OpenAPI examples and error contracts;
 - production secrets and environment-specific configuration;
-- tracing and dashboards;
+- tracing and centralized log aggregation;
 - Kafka evaluation only if replay, retention, or stream-processing requirements
   become real.
 
