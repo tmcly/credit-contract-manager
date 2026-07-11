@@ -45,3 +45,9 @@ that remains proportional to a learning-oriented modular monolith.
 - The initial dashboard covers messaging metrics only; alerts, traces, and logs
   require later increments.
 - The default local Grafana password is intentionally not production-safe.
+
+## Later amendment
+
+ADR 008 adds Loki and Grafana Alloy in a subsequent increment. The Loki
+exclusion above describes this ADR's original scope and is retained as decision
+history.

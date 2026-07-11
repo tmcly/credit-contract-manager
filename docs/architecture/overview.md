@@ -264,7 +264,18 @@ flowchart LR
     USER["Developer"] -->|"messaging dashboard"| GRAFANA
 ```
 
-Prometheus retains seven days of local metric history. Grafana's datasource and
-initial messaging dashboard are provisioned from the repository, so rebuilding
-the environment does not require clicking through setup screens. Loki is not
-part of this stack; logs currently remain available through container output.
+Prometheus retains seven days of local metric history. Grafana's datasources and
+dashboards are provisioned from the repository, so rebuilding the environment
+does not require clicking through setup screens.
+
+```mermaid
+flowchart LR
+    DOCKER["Docker container logs"] --> ALLOY["Grafana Alloy"]
+    ALLOY -->|"push"| LOKI["Loki"]
+    GRAFANA["Grafana"] -->|"LogQL queries"| LOKI
+    USER["Developer"] -->|"logs dashboard and Explore"| GRAFANA
+```
+
+Alloy discovers local containers through the read-only Docker socket and labels
+their logs by Compose service. Loki keeps seven days locally, and Grafana offers
+service and free-text filters, including searches by `correlationId`.
