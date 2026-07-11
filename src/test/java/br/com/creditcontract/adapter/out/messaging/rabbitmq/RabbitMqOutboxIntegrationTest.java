@@ -7,7 +7,6 @@ import br.com.creditcontract.domain.valueobject.Address;
 import br.com.creditcontract.domain.valueobject.Client;
 import br.com.creditcontract.domain.valueobject.ContractId;
 import br.com.creditcontract.domain.valueobject.DocumentNumber;
-import br.com.creditcontract.domain.valueobject.MonetaryAmount;
 import br.com.creditcontract.domain.valueobject.ZipCode;
 import org.junit.jupiter.api.Test;
 import org.springframework.amqp.core.Message;
@@ -22,7 +21,6 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.rabbitmq.RabbitMQContainer;
 
-import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Map;
@@ -34,7 +32,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @SpringBootTest(properties = {
 		"credit-contract.outbox.initial-delay=1h",
 		"credit-contract.outbox.fixed-delay=1h",
-		"credit-contract.outbox.confirm-timeout=10s"
+		"credit-contract.outbox.confirm-timeout=10s",
+		"spring.rabbitmq.listener.simple.auto-startup=false"
 })
 @Testcontainers
 class RabbitMqOutboxIntegrationTest {
@@ -104,7 +103,6 @@ class RabbitMqOutboxIntegrationTest {
 				new Client(
 						DocumentNumber.from("52998224725"),
 						"Maria Silva",
-						new Address("PR", "Curitiba", "Rua das Flores", "123", new ZipCode("80010-000"))),
-				MonetaryAmount.reais(new BigDecimal("5000.00")));
+						new Address("PR", "Curitiba", "Rua das Flores", "123", new ZipCode("80010-000"))));
 	}
 }

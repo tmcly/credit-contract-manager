@@ -15,6 +15,7 @@ framework and integration details replaceable.
 ```mermaid
 flowchart LR
     HTTP["REST adapter"] --> APP["Application use cases"]
+    CONSUMER["RabbitMQ consumer"] --> APP
     APP --> DOMAIN["Domain model"]
     APP --> PORTS["Application output ports"]
     STUBS["Local service adapters"] -. implement .-> PORTS
@@ -47,7 +48,9 @@ br.com.creditcontract
 │   ├── port/out
 │   └── usecase
 └── adapter
-    ├── in/rest
+    ├── in
+    │   ├── rest
+    │   └── messaging/rabbitmq
     └── out
         ├── fake
         ├── messaging/rabbitmq
@@ -61,7 +64,7 @@ br.com.creditcontract
 ## Domain model
 
 `CreditContract` is the aggregate root. It owns its identity, public contract
-number, client snapshot, approved credit limit, current status, timestamps,
+number, client snapshot, optional approved credit limit, current status, timestamps,
 optimistic version, and immutable status-transition history.
 
 The client is not a separate aggregate in this bounded context. Its document,
@@ -72,6 +75,18 @@ time of contracting even if the external registry later changes.
 `DocumentNumber` is named after the business concept exposed by the application
 but accepts CPF only because the product currently supports people, not legal
 entities.
+
+Contracts are created as `DRAFT` without a limit. Analysis first moves them to
+`UNDER_REVIEW`, then to `APPROVED` with a positive limit or `REJECTED` without a
+limit. Every transition is explicit in the aggregate and appended to history.
+
+```mermaid
+stateDiagram-v2
+    [*] --> DRAFT
+    DRAFT --> UNDER_REVIEW: startCreditAnalysis
+    UNDER_REVIEW --> APPROVED: approveCreditAnalysis(limit)
+    UNDER_REVIEW --> REJECTED: rejectCreditAnalysis(reason)
+```
 
 ## Persistence boundary
 
@@ -87,8 +102,8 @@ The domain aggregate and JPA entities are separate models. The mapper prevents
 persistence annotations, table layout, cascade behavior, and lazy-loading
 concerns from leaking into the domain.
 
-The current mapper supports the write direction. Read use cases will require a
-deliberate JPA-to-domain rehydration path before they are added.
+The mapper supports both writes and deliberate JPA-to-domain rehydration,
+including status history and optimistic version.
 
 Flyway owns schema evolution. Hibernate is configured to validate rather than
 create the schema. PostgreSQL constraints reinforce document shape, supported
@@ -111,7 +126,7 @@ erDiagram
         varchar client_street
         varchar client_address_number
         varchar client_zip_code
-        numeric credit_limit
+        numeric credit_limit "nullable before approval"
         varchar status
         timestamp created_at
         timestamp updated_at
@@ -149,38 +164,40 @@ erDiagram
 The status history is the audit trail for lifecycle transitions. The initial
 entry is `null -> DRAFT`; later transitions carry one optional business reason.
 
-## Current synchronous flow
+## Current contract and analysis flow
 
 ```mermaid
 sequenceDiagram
     participant Client
-    participant REST
-    participant UseCase
-    participant ClientFake
-    participant LimitStub
-    participant NumberGenerator
-    participant PostgreSQL
+    participant API
+    participant DB as PostgreSQL/Outbox
+    participant MQ as RabbitMQ
+    participant Worker as Analysis Consumer
+    participant Engine as Credit Analysis Stub
 
-    Client->>REST: POST /api/contracts (documentNumber)
-    REST->>UseCase: CreateContractInput
-    UseCase->>ClientFake: findByDocument
-    UseCase->>LimitStub: getLimitFor
-    UseCase->>NumberGenerator: next (PostgreSQL sequence)
-    UseCase->>PostgreSQL: save contract + initial history + outbox event
-    UseCase-->>REST: CreditContract
-    REST-->>Client: 201 Created
+    Client->>API: POST /api/contracts
+    API->>DB: Save DRAFT without limit + CreditContractCreated
+    API-->>Client: 201 Created
+    DB->>MQ: Relay credit-contract.created.v1
+    MQ->>Worker: Deliver analysis request
+    Worker->>DB: Persist DRAFT -> UNDER_REVIEW
+    Worker->>Engine: Analyze CPF outside transaction
+    alt Approved
+        Engine-->>Worker: Positive limit
+        Worker->>DB: APPROVED + history + CreditAnalysisApproved
+    else Rejected
+        Engine-->>Worker: Rejection reason
+        Worker->>DB: REJECTED + history + CreditAnalysisRejected
+    end
+    Client->>API: GET /api/contracts/{id}
+    API-->>Client: Current eventual state
 ```
 
-The synchronous flow is the current implementation, not the final event-driven
-target. Contract numbers come from a PostgreSQL sequence, while client and
-credit-limit integrations remain local substitutes. The client-registry fake
-uses a CPF-derived seed and the Brazilian Datafaker locale, so snapshots vary
-between documents but remain reproducible for the same CPF. It remains the
-default adapter while no real client-registry integration exists; a future real
-adapter will introduce profile-specific activation. Sequence gaps are valid after
-rollbacks because uniqueness is required but gapless numbering is not.
-The Flyway upgrade aligns the sequence with numbers previously issued by the
-local stub before PostgreSQL becomes the active generator.
+The consumer uses two database transactions around the analysis provider. This
+makes `UNDER_REVIEW` durable before the external work and lets re-delivery resume
+after a crash. Terminal `APPROVED` and `REJECTED` contracts ignore duplicate
+creation events. Contract numbers still come from a PostgreSQL sequence, while
+client-registry and analysis integrations remain deterministic local substitutes.
 
 ## Transactional outbox
 
@@ -216,8 +233,8 @@ sequenceDiagram
 ```
 
 The application declares the durable `credit-contract.events` direct exchange,
-the durable `credit-analysis.requests` queue, and the
-`credit-contract.created.v1` binding. The message preserves event identity,
+the `credit-analysis.requests` and `credit-analysis.results` queues, and their
+versioned bindings. Messages preserve event identity,
 aggregate metadata, event type, schema version, occurrence time, correlation
 ID, and optional causation ID.
 
@@ -230,9 +247,9 @@ contract and must be handled idempotently by future consumers.
 
 ## Target evolution
 
-The event-driven foundation now uses PostgreSQL, a transactional outbox, and
-RabbitMQ. The next evolution introduces the asynchronous credit-analysis
-consumer while preserving at-least-once delivery and requiring idempotency.
+The event-driven workflow now performs asynchronous credit analysis. The next
+evolution hardens retry, dead-letter handling, inbox idempotency, logs, and
+metrics while preserving at-least-once delivery.
 
 See [the roadmap](../roadmap.md) for the implementation sequence and
 [the ADR index](decisions/README.md) for decision rationale.

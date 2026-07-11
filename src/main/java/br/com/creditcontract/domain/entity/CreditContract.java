@@ -1,8 +1,12 @@
 package br.com.creditcontract.domain.entity;
 
 import br.com.creditcontract.domain.enums.ContractStatus;
+import br.com.creditcontract.domain.event.CreditAnalysisApproved;
+import br.com.creditcontract.domain.event.CreditAnalysisRejected;
 import br.com.creditcontract.domain.event.CreditContractCreated;
 import br.com.creditcontract.domain.event.DomainEvent;
+import br.com.creditcontract.domain.event.EventContext;
+import br.com.creditcontract.domain.exception.InvalidContractTransitionException;
 import br.com.creditcontract.domain.valueobject.Client;
 import br.com.creditcontract.domain.valueobject.ContractId;
 import br.com.creditcontract.domain.valueobject.MonetaryAmount;
@@ -37,7 +41,7 @@ public class CreditContract {
 	private final String contractNumber;
 	private final Client client;
 	private ContractStatus status;
-	private final MonetaryAmount creditLimit;
+	private MonetaryAmount creditLimit;
 	private final LocalDateTime createdAt;
 	private final List<ContractStatusHistory> statusHistory;
 	private final List<DomainEvent> domainEvents;
@@ -48,26 +52,29 @@ public class CreditContract {
 		this.id = builder.id;
 		this.contractNumber = builder.contractNumber;
 		this.client = builder.client;
-		this.status = Objects.requireNonNull(builder.status, "initial status cannot be null");
+		this.status = Objects.requireNonNull(builder.status, "status cannot be null");
 		this.creditLimit = builder.creditLimit;
-		this.createdAt = builder.createdAt;
-		this.updatedAt = builder.createdAt;
-		this.version = 0L;
-		this.statusHistory = new ArrayList<>();
-		this.statusHistory.add(ContractStatusHistory.initial(this.status, this.createdAt));
+		this.createdAt = Objects.requireNonNull(builder.createdAt, "createdAt is required");
+		this.updatedAt = builder.updatedAt == null ? builder.createdAt : builder.updatedAt;
+		this.version = builder.version == null ? 0L : builder.version;
+		this.statusHistory = builder.statusHistory == null
+				? new ArrayList<>()
+				: new ArrayList<>(builder.statusHistory);
+		if (this.statusHistory.isEmpty()) {
+			this.statusHistory.add(ContractStatusHistory.initial(this.status, this.createdAt));
+		}
 		this.domainEvents = new ArrayList<>();
+		validateCreditLimitForStatus();
 	}
 
 	/** Factory: creates a brand new contract in its initial state. */
 	public static CreditContract create(ContractId id,
 	                                     String contractNumber,
-	                                     Client client,
-	                                     MonetaryAmount creditLimit) {
+	                                     Client client) {
 		CreditContract contract = builder()
 				.id(id)
 				.contractNumber(contractNumber)
 				.client(client)
-				.creditLimit(creditLimit)
 				.createdAt(LocalDateTime.now())
 				.status(ContractStatus.DRAFT)
 				.build();
@@ -77,6 +84,93 @@ public class CreditContract {
 				contract.client.documentNumber(),
 				contract.createdAt));
 		return contract;
+	}
+
+	/** Rebuilds a persisted aggregate without creating new history or events. */
+	public static CreditContract rehydrate(
+			ContractId id,
+			String contractNumber,
+			Client client,
+			ContractStatus status,
+			MonetaryAmount creditLimit,
+			LocalDateTime createdAt,
+			LocalDateTime updatedAt,
+			Long version,
+			List<ContractStatusHistory> statusHistory) {
+		return builder()
+				.id(id)
+				.contractNumber(contractNumber)
+				.client(client)
+				.status(status)
+				.creditLimit(creditLimit)
+				.createdAt(createdAt)
+				.updatedAt(updatedAt)
+				.version(version)
+				.statusHistory(statusHistory)
+				.build();
+	}
+
+	public void startCreditAnalysis() {
+		requireStatus(ContractStatus.DRAFT, ContractStatus.UNDER_REVIEW);
+		transitionTo(ContractStatus.UNDER_REVIEW, "Credit analysis requested");
+	}
+
+	public void approveCreditAnalysis(MonetaryAmount approvedLimit, EventContext context) {
+		requireStatus(ContractStatus.UNDER_REVIEW, ContractStatus.APPROVED);
+		Objects.requireNonNull(approvedLimit, "approved limit is required");
+		Objects.requireNonNull(context, "event context is required");
+		if (approvedLimit.amount().signum() <= 0) {
+			throw new IllegalArgumentException("approved limit must be positive");
+		}
+		this.creditLimit = approvedLimit;
+		transitionTo(ContractStatus.APPROVED, "Credit analysis approved");
+		domainEvents.add(CreditAnalysisApproved.create(id, approvedLimit, updatedAt, context));
+	}
+
+	public void rejectCreditAnalysis(String reason, EventContext context) {
+		requireStatus(ContractStatus.UNDER_REVIEW, ContractStatus.REJECTED);
+		Objects.requireNonNull(reason, "rejection reason is required");
+		Objects.requireNonNull(context, "event context is required");
+		if (reason.isBlank()) {
+			throw new IllegalArgumentException("rejection reason cannot be blank");
+		}
+		this.creditLimit = null;
+		transitionTo(ContractStatus.REJECTED, reason);
+		domainEvents.add(CreditAnalysisRejected.create(id, reason, updatedAt, context));
+	}
+
+	public boolean hasCreditAnalysisFinished() {
+		return status == ContractStatus.APPROVED || status == ContractStatus.REJECTED;
+	}
+
+	private void requireStatus(ContractStatus expected, ContractStatus target) {
+		if (status != expected) {
+			throw new InvalidContractTransitionException(status, target);
+		}
+	}
+
+	private void transitionTo(ContractStatus target, String reason) {
+		ContractStatus previous = status;
+		status = target;
+		updatedAt = LocalDateTime.now();
+		version++;
+		statusHistory.add(ContractStatusHistory.transition(previous, target, reason, updatedAt));
+		validateCreditLimitForStatus();
+	}
+
+	private void validateCreditLimitForStatus() {
+		if ((status == ContractStatus.DRAFT
+				|| status == ContractStatus.UNDER_REVIEW
+				|| status == ContractStatus.REJECTED)
+				&& creditLimit != null) {
+			throw new IllegalArgumentException(status + " contract cannot have a credit limit");
+		}
+		if ((status == ContractStatus.APPROVED
+				|| status == ContractStatus.ACTIVE
+				|| status == ContractStatus.BLOCKED)
+				&& (creditLimit == null || creditLimit.amount().signum() <= 0)) {
+			throw new IllegalArgumentException(status + " contract requires a positive credit limit");
+		}
 	}
 
 	// ---- Accessors ----
@@ -112,6 +206,9 @@ public class CreditContract {
 		private ContractStatus status;
 		private MonetaryAmount creditLimit;
 		private LocalDateTime createdAt;
+		private LocalDateTime updatedAt;
+		private Long version;
+		private List<ContractStatusHistory> statusHistory;
 
 		public Builder id(ContractId id) { this.id = id; return this; }
 		public Builder contractNumber(String contractNumber) { this.contractNumber = contractNumber; return this; }
@@ -119,12 +216,17 @@ public class CreditContract {
 		public Builder status(ContractStatus status) { this.status = status; return this; }
 		public Builder creditLimit(MonetaryAmount creditLimit) { this.creditLimit = creditLimit; return this; }
 		public Builder createdAt(LocalDateTime createdAt) { this.createdAt = createdAt; return this; }
+		public Builder updatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; return this; }
+		public Builder version(Long version) { this.version = version; return this; }
+		public Builder statusHistory(List<ContractStatusHistory> statusHistory) {
+			this.statusHistory = statusHistory;
+			return this;
+		}
 
 		public CreditContract build() {
 			Objects.requireNonNull(id, "id is required");
 			Objects.requireNonNull(contractNumber, "contractNumber is required");
 			Objects.requireNonNull(client, "client is required");
-			Objects.requireNonNull(creditLimit, "creditLimit is required");
 			Objects.requireNonNull(createdAt, "createdAt is required");
 			return new CreditContract(this);
 		}

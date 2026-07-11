@@ -7,7 +7,6 @@ import br.com.creditcontract.domain.valueobject.Address;
 import br.com.creditcontract.domain.valueobject.Client;
 import br.com.creditcontract.domain.valueobject.ContractId;
 import br.com.creditcontract.domain.valueobject.DocumentNumber;
-import br.com.creditcontract.domain.valueobject.MonetaryAmount;
 import br.com.creditcontract.domain.valueobject.ZipCode;
 import br.com.creditcontract.adapter.in.rest.dto.CreateContractRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -20,7 +19,6 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -61,8 +59,7 @@ class CreateContractControllerTest {
 				"CT-2026-000001",
 				new Client(DocumentNumber.from("52998224725"), "Maria Silva",
 						new Address("PR", "Curitiba", "Rua das Flores", "123",
-								new ZipCode("80010-000"))),
-				MonetaryAmount.reais(new BigDecimal("5000.00"))
+						new ZipCode("80010-000")))
 		);
 
 		when(useCase.execute(any())).thenReturn(contract);
@@ -77,7 +74,7 @@ class CreateContractControllerTest {
 				.andExpect(jsonPath("$.contractNumber").value("CT-2026-000001"))
 				.andExpect(jsonPath("$.clientName").value("Maria Silva"))
 				.andExpect(jsonPath("$.status").value("DRAFT"))
-				.andExpect(jsonPath("$.creditLimit").value("5000.00"))
+				.andExpect(jsonPath("$.creditLimit").doesNotExist())
 				.andExpect(jsonPath("$.version").value(0));
 
 		verify(useCase).execute(argThat(input ->

@@ -1,5 +1,6 @@
 package br.com.creditcontract.adapter.out.persistence.jpa;
 
+import br.com.creditcontract.domain.entity.CreditContract;
 import br.com.creditcontract.domain.enums.ContractStatus;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -54,7 +55,7 @@ public class CreditContractJpaEntity {
 	@Column(nullable = false, length = 30)
 	private ContractStatus status;
 
-	@Column(name = "credit_limit", nullable = false, precision = 19, scale = 2)
+	@Column(name = "credit_limit", precision = 19, scale = 2)
 	private BigDecimal creditLimit;
 
 	@Column(name = "created_at", nullable = false)
@@ -105,6 +106,18 @@ public class CreditContractJpaEntity {
 	void addStatusHistory(ContractStatusHistoryJpaEntity history) {
 		history.attachTo(this);
 		statusHistory.add(history);
+	}
+
+	void updateFrom(CreditContract contract) {
+		this.status = contract.getStatus();
+		this.creditLimit = contract.getCreditLimit() == null
+				? null
+				: contract.getCreditLimit().amount();
+		this.updatedAt = contract.getUpdatedAt();
+	}
+
+	boolean hasStatusHistory(UUID historyId) {
+		return statusHistory.stream().anyMatch(history -> history.getId().equals(historyId));
 	}
 
 	public UUID getId() { return id; }
