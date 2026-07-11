@@ -57,17 +57,17 @@ public class CreditAnalysisConsumer {
 				return null;
 			});
 			successCounter.increment();
-			LOGGER.info("event=message_consumed consumer=credit-analysis eventId={} correlationId={}",
-					eventId, correlationId);
+			LOGGER.atInfo()
+					.addKeyValue("event", "message_consumed")
+					.addKeyValue("consumer", "credit-analysis")
+					.log("RabbitMQ message consumed");
 		} catch (IOException exception) {
 			failureCounter.increment();
-			LOGGER.warn("event=message_consumption_failed consumer=credit-analysis eventId={} correlationId={} reason={}",
-					eventId, correlationId, exception.getMessage());
+			logFailure(exception);
 			throw exception;
 		} catch (Exception exception) {
 			failureCounter.increment();
-			LOGGER.warn("event=message_consumption_failed consumer=credit-analysis eventId={} correlationId={} reason={}",
-					eventId, correlationId, exception.getMessage());
+			logFailure(exception);
 			if (exception instanceof RuntimeException runtimeException) {
 				throw runtimeException;
 			}
@@ -76,5 +76,13 @@ public class CreditAnalysisConsumer {
 			MDC.remove("eventId");
 			MDC.remove("correlationId");
 		}
+	}
+
+	private void logFailure(Exception exception) {
+		LOGGER.atWarn()
+				.addKeyValue("event", "message_consumption_failed")
+				.addKeyValue("consumer", "credit-analysis")
+				.addKeyValue("errorType", exception.getClass().getSimpleName())
+				.log("RabbitMQ message consumption failed");
 	}
 }

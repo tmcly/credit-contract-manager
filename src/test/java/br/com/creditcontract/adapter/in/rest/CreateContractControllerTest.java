@@ -87,6 +87,40 @@ class CreateContractControllerTest {
 	}
 
 	@Test
+	void shouldGenerateCorrelationIdWhenHeaderIsMissing() throws Exception {
+		CreditContract contract = CreditContract.create(
+				ContractId.generate(),
+				"CT-2026-000002",
+				new Client(DocumentNumber.from("52998224725"), "Maria Silva",
+						new Address("PR", "Curitiba", "Rua das Flores", "123",
+								new ZipCode("80010-000"))));
+		when(useCase.execute(any())).thenReturn(contract);
+
+		mockMvc.perform(post("/api/contracts")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(objectMapper.writeValueAsString(
+								new CreateContractRequest("529.982.247-25"))))
+				.andExpect(status().isCreated())
+				.andExpect(header().exists("X-Correlation-ID"));
+
+		verify(useCase).execute(argThat(input -> input.correlationId() != null));
+	}
+
+	@Test
+	void shouldReturn400WhenCorrelationIdIsInvalid() throws Exception {
+		mockMvc.perform(post("/api/contracts")
+						.header("X-Correlation-ID", "not-a-uuid")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content(objectMapper.writeValueAsString(
+								new CreateContractRequest("529.982.247-25"))))
+				.andExpect(status().isBadRequest())
+				.andExpect(header().exists("X-Correlation-ID"))
+				.andExpect(jsonPath("$.type").value("/errors/invalid-correlation-id"))
+				.andExpect(jsonPath("$.detail")
+						.value("X-Correlation-ID must be a valid UUID"));
+	}
+
+	@Test
 	void shouldReturn400WhenCpfIsMissing() throws Exception {
 		String json = "{\"documentNumber\": \"\"}";
 

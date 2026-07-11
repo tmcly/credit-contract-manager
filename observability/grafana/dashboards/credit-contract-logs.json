@@ -8,52 +8,90 @@
     {
       "datasource": { "type": "loki", "uid": "loki" },
       "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "unit": "short" }, "overrides": [] },
-      "gridPos": { "h": 7, "w": 24, "x": 0, "y": 0 },
+      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 0 },
       "id": 1,
       "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "none" } },
-      "targets": [{ "expr": "sum by (service_name) (count_over_time({service_name=~\"$service\"}[$__auto]))", "legendFormat": "{{service_name}}", "queryType": "range", "refId": "A" }],
-      "title": "Log volume by service",
+      "targets": [{ "expr": "sum by (level) (count_over_time({service_name=\"credit-contract-manager\", level=~\"$level\"}[$__auto]))", "legendFormat": "{{level}}", "queryType": "range", "refId": "A" }],
+      "title": "Application log volume by level",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "loki", "uid": "loki" },
+      "fieldConfig": { "defaults": { "color": { "mode": "palette-classic" }, "unit": "short" }, "overrides": [] },
+      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 0 },
+      "id": 2,
+      "options": { "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true }, "tooltip": { "mode": "multi", "sort": "none" } },
+      "targets": [{ "expr": "sum by (event) (count_over_time({service_name=\"credit-contract-manager\", event=~\"$event\"}[$__auto]))", "legendFormat": "{{event}}", "queryType": "range", "refId": "A" }],
+      "title": "Application log volume by event",
       "type": "timeseries"
     },
     {
       "datasource": { "type": "loki", "uid": "loki" },
       "gridPos": { "h": 13, "w": 24, "x": 0, "y": 7 },
-      "id": 2,
-      "options": { "dedupStrategy": "none", "enableLogDetails": true, "prettifyLogMessage": false, "showCommonLabels": false, "showLabels": false, "showTime": true, "sortOrder": "Descending", "wrapLogMessage": true },
-      "targets": [{ "expr": "{service_name=~\"$service\"} |~ \"$search\"", "queryType": "range", "refId": "A" }],
-      "title": "Container logs",
+      "id": 3,
+      "options": { "dedupStrategy": "none", "enableLogDetails": true, "prettifyLogMessage": true, "showCommonLabels": false, "showLabels": false, "showTime": true, "sortOrder": "Descending", "wrapLogMessage": true },
+      "targets": [{ "expr": "{service_name=\"credit-contract-manager\", level=~\"$level\", event=~\"$event\"} | json | correlationId=~\"$correlationId\" | contractId=~\"$contractId\" |~ \"$search\"", "queryType": "range", "refId": "A" }],
+      "title": "Structured application logs",
       "type": "logs"
     }
   ],
   "refresh": "5s",
   "schemaVersion": 42,
-  "tags": ["credit-contract", "logs", "loki"],
+  "tags": ["credit-contract", "logs", "loki", "json"],
   "templating": {
     "list": [
       {
         "allValue": ".*",
-        "current": { "text": "credit-contract-manager", "value": "credit-contract-manager" },
+        "current": { "text": "All", "value": "$__all" },
         "datasource": { "type": "loki", "uid": "loki" },
-        "definition": "label_values(service_name)",
+        "definition": "label_values({service_name=\"credit-contract-manager\"}, level)",
         "includeAll": true,
-        "label": "Service",
+        "label": "Level",
         "multi": true,
-        "name": "service",
+        "name": "level",
         "options": [],
-        "query": "label_values(service_name)",
+        "query": "label_values({service_name=\"credit-contract-manager\"}, level)",
         "refresh": 2,
-        "regex": "",
-        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      },
+      {
+        "allValue": ".*",
+        "current": { "text": "All", "value": "$__all" },
+        "datasource": { "type": "loki", "uid": "loki" },
+        "definition": "label_values({service_name=\"credit-contract-manager\"}, event)",
+        "includeAll": true,
+        "label": "Event",
+        "multi": true,
+        "name": "event",
+        "options": [],
+        "query": "label_values({service_name=\"credit-contract-manager\"}, event)",
+        "refresh": 2,
         "sort": 1,
         "type": "query"
       },
       {
         "current": { "text": ".*", "value": ".*" },
-        "label": "Search or correlationId",
+        "label": "Correlation ID",
+        "name": "correlationId",
+        "options": [{ "selected": true, "text": ".*", "value": ".*" }],
+        "query": ".*",
+        "type": "textbox"
+      },
+      {
+        "current": { "text": ".*", "value": ".*" },
+        "label": "Contract ID",
+        "name": "contractId",
+        "options": [{ "selected": true, "text": ".*", "value": ".*" }],
+        "query": ".*",
+        "type": "textbox"
+      },
+      {
+        "current": { "text": ".*", "value": ".*" },
+        "label": "Text search",
         "name": "search",
         "options": [{ "selected": true, "text": ".*", "value": ".*" }],
         "query": ".*",
-        "skipUrlSync": false,
         "type": "textbox"
       }
     ]
@@ -63,5 +101,5 @@
   "timezone": "browser",
   "title": "Credit Contract Logs",
   "uid": "credit-contract-logs",
-  "version": 1
+  "version": 2
 }

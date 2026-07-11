@@ -11,7 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URI;
@@ -34,8 +34,7 @@ public class CreateContractController {
 	@PostMapping
 	public ResponseEntity<CreditContractResponse> create(
 			@Valid @RequestBody CreateContractRequest request,
-			@RequestHeader(value = "X-Correlation-ID", required = false) UUID requestedCorrelationId) {
-		UUID correlationId = requestedCorrelationId == null ? UUID.randomUUID() : requestedCorrelationId;
+			@RequestAttribute(HttpRequestLoggingFilter.CORRELATION_ID_ATTRIBUTE) UUID correlationId) {
 		CreateContractInput input = new CreateContractInput(
 				DocumentNumber.from(request.documentNumber()), correlationId);
 		CreditContract contract = createContractUseCase.execute(input);
@@ -52,7 +51,6 @@ public class CreateContractController {
 
 		URI location = URI.create("/api/contracts/" + contract.getId().asString());
 		return ResponseEntity.created(location)
-				.header("X-Correlation-ID", correlationId.toString())
 				.body(response);
 	}
 }
