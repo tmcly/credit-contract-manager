@@ -6,6 +6,12 @@ import br.com.creditcontract.application.usecase.ProcessCreditAnalysisUseCase;
 import br.com.creditcontract.domain.valueobject.ContractId;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
@@ -17,25 +23,58 @@ import java.util.UUID;
 /** Inbound RabbitMQ adapter for at-least-once credit-analysis requests. */
 @Component
 public class CreditAnalysisConsumer {
+	private static final Logger LOGGER = LoggerFactory.getLogger(CreditAnalysisConsumer.class);
 
 	private final ProcessCreditAnalysisUseCase useCase;
 	private final ObjectMapper objectMapper;
+	private final Counter successCounter;
+	private final Counter failureCounter;
+	private final Timer processingTimer;
 
 	public CreditAnalysisConsumer(
 			ProcessCreditAnalysisUseCase useCase,
-			ObjectMapper objectMapper) {
+			ObjectMapper objectMapper,
+			MeterRegistry meterRegistry) {
 		this.useCase = Objects.requireNonNull(useCase);
 		this.objectMapper = Objects.requireNonNull(objectMapper);
+		this.successCounter = meterRegistry.counter("credit_contract.consumer.success", "consumer", "credit-analysis");
+		this.failureCounter = meterRegistry.counter("credit_contract.consumer.failure", "consumer", "credit-analysis");
+		this.processingTimer = meterRegistry.timer("credit_contract.consumer.processing", "consumer", "credit-analysis");
 	}
 
 	@RabbitListener(queues = RabbitMqTopology.CREDIT_ANALYSIS_REQUESTS_QUEUE)
 	public void consume(Message message) throws IOException {
-		JsonNode payload = objectMapper.readTree(message.getBody());
-		UUID contractId = UUID.fromString(payload.required("contractId").asText());
 		UUID eventId = UUID.fromString(message.getMessageProperties().getMessageId());
 		UUID correlationId = UUID.fromString(message.getMessageProperties().getCorrelationId());
-
-		useCase.execute(new ProcessCreditAnalysisCommand(
-				ContractId.from(contractId), eventId, correlationId));
+		MDC.put("eventId", eventId.toString());
+		MDC.put("correlationId", correlationId.toString());
+		try {
+			processingTimer.recordCallable(() -> {
+				JsonNode payload = objectMapper.readTree(message.getBody());
+				UUID contractId = UUID.fromString(payload.required("contractId").asText());
+				useCase.execute(new ProcessCreditAnalysisCommand(
+						ContractId.from(contractId), eventId, correlationId));
+				return null;
+			});
+			successCounter.increment();
+			LOGGER.info("event=message_consumed consumer=credit-analysis eventId={} correlationId={}",
+					eventId, correlationId);
+		} catch (IOException exception) {
+			failureCounter.increment();
+			LOGGER.warn("event=message_consumption_failed consumer=credit-analysis eventId={} correlationId={} reason={}",
+					eventId, correlationId, exception.getMessage());
+			throw exception;
+		} catch (Exception exception) {
+			failureCounter.increment();
+			LOGGER.warn("event=message_consumption_failed consumer=credit-analysis eventId={} correlationId={} reason={}",
+					eventId, correlationId, exception.getMessage());
+			if (exception instanceof RuntimeException runtimeException) {
+				throw runtimeException;
+			}
+			throw new IOException("could not process credit-analysis message", exception);
+		} finally {
+			MDC.remove("eventId");
+			MDC.remove("correlationId");
+		}
 	}
 }

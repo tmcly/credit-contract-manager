@@ -20,6 +20,7 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -59,6 +60,9 @@ class OutboxRelayTest {
 		registry.add("spring.datasource.password", POSTGRES::getPassword);
 		registry.add("credit-contract.outbox.batch-size", () -> 10);
 		registry.add("credit-contract.outbox.retry-delay", () -> "1ms");
+		registry.add("credit-contract.outbox.retry-initial-delay", () -> "1ms");
+		registry.add("credit-contract.outbox.retry-max-delay", () -> "10ms");
+		registry.add("credit-contract.outbox.max-attempts", () -> 3);
 	}
 
 	@Autowired
@@ -76,7 +80,8 @@ class OutboxRelayTest {
 	@Test
 	@Transactional(propagation = Propagation.NOT_SUPPORTED)
 	void shouldRetryUnconfirmedEventsAndNotRepublishConfirmedEvents() {
-		CreditContract contract = sampleContract();
+		publisher.publicationCount = 0;
+		CreditContract contract = sampleContract("CT-2026-000100");
 		repository.save(contract);
 		String eventId = contractEventId(contract);
 
@@ -105,6 +110,31 @@ class OutboxRelayTest {
 		assertEquals(2, publisher.publicationCount);
 	}
 
+	@Test
+	@Transactional(propagation = Propagation.NOT_SUPPORTED)
+	void shouldStopPublishingAfterBoundedAttempts() {
+		publisher.publicationCount = 0;
+		CreditContract contract = sampleContract("CT-2026-000102");
+		repository.save(contract);
+		String eventId = contractEventId(contract);
+		publisher.nextResult = EventPublicationResult.failure("broker unavailable");
+
+		for (int attempt = 0; attempt < 3; attempt++) {
+			relay.publishPending();
+			jdbcTemplate.update(
+					"UPDATE outbox_events SET next_attempt_at = CURRENT_TIMESTAMP "
+							+ "WHERE event_id = ?::uuid AND publication_status = 'PENDING'",
+					eventId);
+		}
+		relay.publishPending();
+
+		Map<String, Object> failed = outbox(eventId);
+		assertEquals("FAILED", failed.get("publication_status"));
+		assertEquals(3, failed.get("publication_attempts"));
+		assertNull(failed.get("next_attempt_at"));
+		assertEquals(3, publisher.publicationCount);
+	}
+
 	private String contractEventId(CreditContract contract) {
 		return jdbcTemplate.queryForObject(
 				"SELECT event_id::text FROM outbox_events WHERE aggregate_id = ?",
@@ -118,10 +148,10 @@ class OutboxRelayTest {
 				eventId);
 	}
 
-	private CreditContract sampleContract() {
+	private CreditContract sampleContract(String contractNumber) {
 		return CreditContract.create(
 				ContractId.generate(),
-				"CT-2026-000100",
+				contractNumber,
 				new Client(
 						DocumentNumber.from("52998224725"),
 						"Maria Silva",
@@ -134,6 +164,11 @@ class OutboxRelayTest {
 		@Bean
 		RecordingEventPublisher eventPublisher() {
 			return new RecordingEventPublisher();
+		}
+
+		@Bean
+		SimpleMeterRegistry meterRegistry() {
+			return new SimpleMeterRegistry();
 		}
 	}
 

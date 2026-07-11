@@ -4,6 +4,7 @@ import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.DirectExchange;
 import org.springframework.amqp.core.Queue;
+import org.springframework.amqp.core.QueueBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableScheduling;
@@ -18,8 +19,30 @@ public class RabbitMqConfiguration {
 	}
 
 	@Bean
+	DirectExchange deadLetterExchange() {
+		return new DirectExchange(RabbitMqTopology.DEAD_LETTER_EXCHANGE, true, false);
+	}
+
+	@Bean
 	Queue creditAnalysisRequestsQueue() {
-		return new Queue(RabbitMqTopology.CREDIT_ANALYSIS_REQUESTS_QUEUE, true);
+		return QueueBuilder.durable(RabbitMqTopology.CREDIT_ANALYSIS_REQUESTS_QUEUE)
+				.deadLetterExchange(RabbitMqTopology.DEAD_LETTER_EXCHANGE)
+				.deadLetterRoutingKey(RabbitMqTopology.CREDIT_ANALYSIS_DEAD_LETTER_ROUTING_KEY)
+				.build();
+	}
+
+	@Bean
+	Queue creditAnalysisDeadLetterQueue() {
+		return QueueBuilder.durable(RabbitMqTopology.CREDIT_ANALYSIS_DLQ).build();
+	}
+
+	@Bean
+	Binding creditAnalysisDeadLetterBinding(
+			DirectExchange deadLetterExchange,
+			Queue creditAnalysisDeadLetterQueue) {
+		return BindingBuilder.bind(creditAnalysisDeadLetterQueue)
+				.to(deadLetterExchange)
+				.with(RabbitMqTopology.CREDIT_ANALYSIS_DEAD_LETTER_ROUTING_KEY);
 	}
 
 	@Bean

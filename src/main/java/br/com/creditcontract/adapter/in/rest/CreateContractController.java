@@ -11,10 +11,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URI;
 import java.util.Objects;
+import java.util.UUID;
 
 /**
  * REST endpoint for contract creation.
@@ -30,8 +32,12 @@ public class CreateContractController {
 	}
 
 	@PostMapping
-	public ResponseEntity<CreditContractResponse> create(@Valid @RequestBody CreateContractRequest request) {
-		CreateContractInput input = new CreateContractInput(DocumentNumber.from(request.documentNumber()));
+	public ResponseEntity<CreditContractResponse> create(
+			@Valid @RequestBody CreateContractRequest request,
+			@RequestHeader(value = "X-Correlation-ID", required = false) UUID requestedCorrelationId) {
+		UUID correlationId = requestedCorrelationId == null ? UUID.randomUUID() : requestedCorrelationId;
+		CreateContractInput input = new CreateContractInput(
+				DocumentNumber.from(request.documentNumber()), correlationId);
 		CreditContract contract = createContractUseCase.execute(input);
 
 		CreditContractResponse response = CreditContractResponse.from(
@@ -45,6 +51,8 @@ public class CreateContractController {
 		);
 
 		URI location = URI.create("/api/contracts/" + contract.getId().asString());
-		return ResponseEntity.created(location).body(response);
+		return ResponseEntity.created(location)
+				.header("X-Correlation-ID", correlationId.toString())
+				.body(response);
 	}
 }

@@ -20,6 +20,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -54,6 +55,7 @@ class CreateContractControllerTest {
 
 	@Test
 	void shouldCreateContractAndReturn201WithLocation() throws Exception {
+		UUID correlationId = UUID.randomUUID();
 		CreditContract contract = CreditContract.create(
 				ContractId.generate(),
 				"CT-2026-000001",
@@ -67,10 +69,12 @@ class CreateContractControllerTest {
 		CreateContractRequest request = new CreateContractRequest("529.982.247-25");
 
 		mockMvc.perform(post("/api/contracts")
+						.header("X-Correlation-ID", correlationId)
 						.contentType(MediaType.APPLICATION_JSON)
 						.content(objectMapper.writeValueAsString(request)))
 				.andExpect(status().isCreated())
 				.andExpect(header().exists("Location"))
+				.andExpect(header().string("X-Correlation-ID", correlationId.toString()))
 				.andExpect(jsonPath("$.contractNumber").value("CT-2026-000001"))
 				.andExpect(jsonPath("$.clientName").value("Maria Silva"))
 				.andExpect(jsonPath("$.status").value("DRAFT"))
@@ -78,7 +82,8 @@ class CreateContractControllerTest {
 				.andExpect(jsonPath("$.version").value(0));
 
 		verify(useCase).execute(argThat(input ->
-				input.documentNumber().value().equals("52998224725")));
+				input.documentNumber().value().equals("52998224725")
+						&& input.correlationId().equals(correlationId)));
 	}
 
 	@Test

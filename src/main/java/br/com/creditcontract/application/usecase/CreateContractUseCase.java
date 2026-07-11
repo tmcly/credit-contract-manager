@@ -52,7 +52,8 @@ public class CreateContractUseCase {
 		String contractNumber = contractNumberGenerator.next();
 		ContractId contractId = ContractId.generate();
 
-		CreditContract contract = CreditContract.create(contractId, contractNumber, client);
+		CreditContract contract = CreditContract.create(
+				contractId, contractNumber, client, input.correlationId());
 		creditContractRepository.save(contract);
 		return contract;
 	}

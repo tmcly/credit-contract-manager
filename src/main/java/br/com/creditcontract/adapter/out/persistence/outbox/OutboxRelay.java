@@ -5,6 +5,10 @@ import br.com.creditcontract.application.port.out.EventPublicationResult;
 import br.com.creditcontract.application.port.out.EventPublisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Gauge;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -35,20 +39,39 @@ public class OutboxRelay {
 	private final JdbcTemplate jdbcTemplate;
 	private final EventPublisher eventPublisher;
 	private final int batchSize;
-	private final Duration retryDelay;
+	private final Duration retryInitialDelay;
+	private final Duration retryMaxDelay;
+	private final int maxAttempts;
+	private final Counter publishedCounter;
+	private final Counter failureCounter;
+	private final Timer publishLatency;
 
 	public OutboxRelay(
 			JdbcTemplate jdbcTemplate,
 			EventPublisher eventPublisher,
 			@Value("${credit-contract.outbox.batch-size}") int batchSize,
-			@Value("${credit-contract.outbox.retry-delay}") Duration retryDelay) {
+			@Value("${credit-contract.outbox.retry-initial-delay}") Duration retryInitialDelay,
+			@Value("${credit-contract.outbox.retry-max-delay}") Duration retryMaxDelay,
+			@Value("${credit-contract.outbox.max-attempts}") int maxAttempts,
+			MeterRegistry meterRegistry) {
 		this.jdbcTemplate = Objects.requireNonNull(jdbcTemplate);
 		this.eventPublisher = Objects.requireNonNull(eventPublisher);
-		this.retryDelay = Objects.requireNonNull(retryDelay);
+		this.retryInitialDelay = Objects.requireNonNull(retryInitialDelay);
+		this.retryMaxDelay = Objects.requireNonNull(retryMaxDelay);
 		if (batchSize <= 0) {
 			throw new IllegalArgumentException("outbox batch size must be positive");
 		}
+		if (maxAttempts <= 0) {
+			throw new IllegalArgumentException("outbox max attempts must be positive");
+		}
 		this.batchSize = batchSize;
+		this.maxAttempts = maxAttempts;
+		this.publishedCounter = meterRegistry.counter("credit_contract.outbox.published");
+		this.failureCounter = meterRegistry.counter("credit_contract.outbox.publish.failures");
+		this.publishLatency = meterRegistry.timer("credit_contract.outbox.publish.latency");
+		Gauge.builder("credit_contract.outbox.pending", this, OutboxRelay::pendingCount)
+				.description("Number of outbox events eligible or waiting for retry")
+				.register(meterRegistry);
 	}
 
 	@Scheduled(
@@ -71,13 +94,17 @@ public class OutboxRelay {
 				batchSize);
 
 		for (EventPublication event : events) {
-			EventPublicationResult result = eventPublisher.publish(event);
+			EventPublicationResult result = publishLatency.record(() -> eventPublisher.publish(event));
 			if (result.confirmed()) {
 				markPublished(event.eventId());
-				LOGGER.info("Published outbox event {} of type {}", event.eventId(), event.eventType());
+				publishedCounter.increment();
+				LOGGER.info("event=outbox_published eventId={} eventType={} correlationId={} causationId={}",
+						event.eventId(), event.eventType(), event.correlationId(), event.causationId());
 			} else {
 				markForRetry(event.eventId(), result.failureReason());
-				LOGGER.warn("Could not publish outbox event {}: {}", event.eventId(), result.failureReason());
+				failureCounter.increment();
+				LOGGER.warn("event=outbox_publish_failed eventId={} eventType={} correlationId={} reason={}",
+						event.eventId(), event.eventType(), event.correlationId(), result.failureReason());
 			}
 		}
 	}
@@ -99,9 +126,26 @@ public class OutboxRelay {
 		jdbcTemplate.update("""
 				UPDATE outbox_events
 				SET publication_attempts = publication_attempts + 1,
-				    next_attempt_at = CURRENT_TIMESTAMP + (? * INTERVAL '1 millisecond'),
+				    publication_status = CASE
+				        WHEN publication_attempts + 1 >= ? THEN 'FAILED'
+				        ELSE 'PENDING'
+				    END,
+				    next_attempt_at = CASE
+				        WHEN publication_attempts + 1 >= ? THEN NULL
+				        ELSE CURRENT_TIMESTAMP + (
+				            LEAST(? * POWER(2, publication_attempts), ?) * INTERVAL '1 millisecond'
+				        )
+				    END,
 				    last_error = ?
 				WHERE event_id = ? AND publication_status = 'PENDING'
-				""", retryDelay.toMillis(), error, eventId);
+				""", maxAttempts, maxAttempts, retryInitialDelay.toMillis(),
+				retryMaxDelay.toMillis(), error, eventId);
+	}
+
+	private double pendingCount() {
+		Long count = jdbcTemplate.queryForObject(
+				"SELECT COUNT(*) FROM outbox_events WHERE publication_status = 'PENDING'",
+				Long.class);
+		return count == null ? 0 : count.doubleValue();
 	}
 }

@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 
 /**
  * Aggregate root representing a credit contract.
@@ -71,19 +72,40 @@ public class CreditContract {
 	public static CreditContract create(ContractId id,
 	                                     String contractNumber,
 	                                     Client client) {
-		CreditContract contract = builder()
-				.id(id)
-				.contractNumber(contractNumber)
-				.client(client)
-				.createdAt(LocalDateTime.now())
-				.status(ContractStatus.DRAFT)
-				.build();
+		CreditContract contract = newContract(id, contractNumber, client);
 		contract.domainEvents.add(CreditContractCreated.initial(
 				contract.id,
 				contract.contractNumber,
 				contract.client.documentNumber(),
 				contract.createdAt));
 		return contract;
+	}
+
+	public static CreditContract create(ContractId id,
+	                                     String contractNumber,
+	                                     Client client,
+	                                     UUID correlationId) {
+		CreditContract contract = newContract(id, contractNumber, client);
+		contract.domainEvents.add(CreditContractCreated.create(
+				contract.id,
+				contract.contractNumber,
+				contract.client.documentNumber(),
+				contract.createdAt,
+				correlationId));
+		return contract;
+	}
+
+	private static CreditContract newContract(
+			ContractId id,
+			String contractNumber,
+			Client client) {
+		return builder()
+				.id(id)
+				.contractNumber(contractNumber)
+				.client(client)
+				.createdAt(LocalDateTime.now())
+				.status(ContractStatus.DRAFT)
+				.build();
 	}
 
 	/** Rebuilds a persisted aggregate without creating new history or events. */

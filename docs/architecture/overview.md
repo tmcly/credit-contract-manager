@@ -247,9 +247,9 @@ contract and must be handled idempotently by future consumers.
 
 ## Target evolution
 
-The event-driven workflow now performs asynchronous credit analysis. The next
-evolution hardens retry, dead-letter handling, inbox idempotency, logs, and
-metrics while preserving at-least-once delivery.
+The event-driven workflow performs asynchronous credit analysis with bounded
+retry, dead-letter handling, inbox idempotency, correlation metadata, structured
+logs, and Micrometer metrics while preserving at-least-once delivery.
 
 See [the roadmap](../roadmap.md) for the implementation sequence and
 [the ADR index](decisions/README.md) for decision rationale.

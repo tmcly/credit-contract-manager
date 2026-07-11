@@ -1,6 +1,6 @@
 # ADR 004: Transactional Outbox and RabbitMQ-First Event Architecture
 
-- Status: Accepted; partially implemented
+- Status: Accepted; implemented
 - Date: 2026-07-10
 
 ## Context
@@ -71,9 +71,9 @@ through a durable RabbitMQ topology. Rows become `PUBLISHED` only after a
 publisher confirmation; failures remain eligible for retry.
 
 JSON serialization, outbox storage, scheduling, and RabbitMQ access remain in
-outbound adapters. A general processed-message inbox, exponential backoff,
-bounded poison-message attempts, and dead-letter topology remain pending for
-later roadmap phases.
+outbound adapters. ADR 006 adds the processed-message inbox, exponential
+backoff, bounded poison-message attempts, dead-letter topology, and messaging
+observability.
 
 ADR 005 refines the earlier generic `CreditAnalysisCompleted` example into the
 mutually exclusive `CreditAnalysisApproved` and `CreditAnalysisRejected`

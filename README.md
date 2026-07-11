@@ -83,6 +83,7 @@ src/main/java/br/com/creditcontract/
 - ✅ Confirmed outbox publication through RabbitMQ
 - ✅ Asynchronous credit approval/rejection with explicit domain transitions
 - ✅ Query endpoint for eventually consistent contract state
+- ✅ Inbox idempotency, bounded messaging retries, DLQ, correlation, and metrics
 - ✅ Flyway schema migration + Testcontainers integration test
 - ✅ Automated unit and PostgreSQL integration tests
 - ✅ Docker: `Dockerfile` (multi-stage) + `docker-compose.yml`
@@ -172,3 +173,13 @@ curl http://localhost:8080/health
 
 Detailed infrastructure health, including PostgreSQL and RabbitMQ connectivity,
 is available at `GET /actuator/health`.
+
+Messaging metrics are available at `GET /actuator/metrics` and in Prometheus
+format at `GET /actuator/prometheus`. Contract creation accepts an optional
+`X-Correlation-ID` header and always returns the effective value so the HTTP
+request can be followed through outbox and consumer logs.
+
+Consumer failures retry four times with exponential backoff before RabbitMQ
+routes the message to `credit-analysis.requests.dlq`. Successfully consumed
+event IDs are recorded in the PostgreSQL inbox in the same transaction as the
+terminal contract result. See ADR 006 for the safe dead-letter replay procedure.
