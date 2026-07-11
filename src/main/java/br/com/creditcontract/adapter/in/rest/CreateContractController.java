@@ -7,9 +7,6 @@ import br.com.creditcontract.domain.valueobject.DocumentNumber;
 import br.com.creditcontract.adapter.in.rest.dto.CreateContractRequest;
 import br.com.creditcontract.adapter.in.rest.dto.CreditContractResponse;
 import jakarta.validation.Valid;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.enums.ParameterIn;
-import io.swagger.v3.oas.annotations.media.Schema;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -35,11 +32,6 @@ public class CreateContractController {
 	}
 
 	@PostMapping
-	@Parameter(
-			name = HttpRequestLoggingFilter.CORRELATION_ID_HEADER,
-			description = "Optional request correlation ID. The API generates one when omitted.",
-			in = ParameterIn.HEADER,
-			schema = @Schema(type = "string", format = "uuid"))
 	public ResponseEntity<CreditContractResponse> create(
 			@Valid @RequestBody CreateContractRequest request,
 			@RequestAttribute(HttpRequestLoggingFilter.CORRELATION_ID_ATTRIBUTE) UUID correlationId) {
