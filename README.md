@@ -13,6 +13,7 @@ with strong emphasis on software design best practices.
 | Build | Maven |
 | Database | PostgreSQL 17 + Spring Data JPA + Flyway |
 | Messaging | RabbitMQ 4 + Spring AMQP |
+| Observability | Micrometer + Prometheus + Loki + Alloy + Grafana |
 | Integration tests | Testcontainers |
 
 ## Architecture (Clean Architecture + DDD + SOLID)
@@ -145,6 +146,19 @@ automatically and JPA only validates it (`ddl-auto=validate`). RabbitMQ's local
 management UI is available at `http://localhost:15672` with the development
 credentials `credit_contract` / `credit_contract`.
 
+Prometheus is available at `http://localhost:9090`. Grafana is available at
+`http://localhost:3000` with the local credentials `admin` / `admin` by default;
+use `GRAFANA_ADMIN_USER` and `GRAFANA_ADMIN_PASSWORD` to override them. Its
+Prometheus and Loki datasources plus the **Credit Contract Messaging** and
+**Credit Contract Logs** dashboards are loaded automatically from
+`observability/grafana`.
+
+Loki is available at `http://localhost:3100`, while Alloy's local component UI
+is available at `http://localhost:12345`. Alloy discovers Compose containers
+through the read-only Docker socket and sends their logs to Loki. In the logs
+dashboard, select a service or enter text such as a returned correlation ID in
+the search field.
+
 Contract numbers use the format `CT-YYYY-NNNNNN`. The numeric portion comes
 from PostgreSQL, so it remains unique across application restarts and concurrent
 requests. Gaps are expected when a transaction rolls back after reserving a
@@ -183,3 +197,6 @@ Consumer failures retry four times with exponential backoff before RabbitMQ
 routes the message to `credit-analysis.requests.dlq`. Successfully consumed
 event IDs are recorded in the PostgreSQL inbox in the same transaction as the
 terminal contract result. See ADR 006 for the safe dead-letter replay procedure.
+
+Grafana remains the visualization layer. Loki is the separate log database, and
+Alloy is the collector that reads Docker log streams and forwards them to Loki.

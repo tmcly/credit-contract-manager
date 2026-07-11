@@ -253,3 +253,29 @@ logs, and Micrometer metrics while preserving at-least-once delivery.
 
 See [the roadmap](../roadmap.md) for the implementation sequence and
 [the ADR index](decisions/README.md) for decision rationale.
+
+## Local observability
+
+```mermaid
+flowchart LR
+    APP["Application + Micrometer"] --> ENDPOINT["/actuator/prometheus"]
+    PROM["Prometheus"] -->|"scrapes every 5 seconds"| ENDPOINT
+    GRAFANA["Grafana"] -->|"PromQL queries"| PROM
+    USER["Developer"] -->|"messaging dashboard"| GRAFANA
+```
+
+Prometheus retains seven days of local metric history. Grafana's datasources and
+dashboards are provisioned from the repository, so rebuilding the environment
+does not require clicking through setup screens.
+
+```mermaid
+flowchart LR
+    DOCKER["Docker container logs"] --> ALLOY["Grafana Alloy"]
+    ALLOY -->|"push"| LOKI["Loki"]
+    GRAFANA["Grafana"] -->|"LogQL queries"| LOKI
+    USER["Developer"] -->|"logs dashboard and Explore"| GRAFANA
+```
+
+Alloy discovers local containers through the read-only Docker socket and labels
+their logs by Compose service. Loki keeps seven days locally, and Grafana offers
+service and free-text filters, including searches by `correlationId`.

@@ -1,0 +1,10 @@
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+
+scrape_configs:
+  - job_name: credit-contract-manager
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets:
+          - credit-contract-manager:8080

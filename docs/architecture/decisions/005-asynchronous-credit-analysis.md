@@ -37,8 +37,8 @@ decisions.
 - Persist `UNDER_REVIEW` before invoking the analysis provider, then persist the
   terminal result and its outbox event in a second transaction.
 - Re-delivery is state-aware: terminal contracts are ignored and
-  `UNDER_REVIEW` contracts resume analysis. A general processed-message inbox
-  remains planned for the resilience phase.
+  `UNDER_REVIEW` contracts resume analysis. ADR 006 adds the general
+  processed-message inbox used by the implemented consumer.
 
 ## Consequences
 
@@ -56,5 +56,5 @@ decisions.
 - Creation responses are eventually consistent and initially contain no limit.
 - Clients need a query endpoint to observe the final result.
 - Two database transactions are used around the external analysis call.
-- State-aware idempotency covers this workflow, but broader consumer
-  idempotency still requires the inbox planned for Phase 6.
+- State-aware aggregate checks remain a recovery safeguard, while ADR 006's
+  inbox provides durable consumer idempotency by event ID.
