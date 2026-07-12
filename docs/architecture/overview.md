@@ -92,6 +92,7 @@ stateDiagram-v2
     APPROVED --> ACCEPTED: accept
     ACCEPTED --> ACTIVE: activation consumer
     ACTIVE --> BLOCKED: block(reason)
+    BLOCKED --> ACTIVE: unblock(reason)
 ```
 
 ## Persistence boundary
@@ -227,6 +228,14 @@ adapter. The application use case loads the aggregate, which alone permits
 `CreditContractBlocked` through the outbox. The fact is routed with
 `credit-contract.blocked.v1`; future downstream services can bind their own
 queues without changing the blocking rule.
+
+The same synchronous command boundary exposes unblocking. The aggregate alone
+permits `BLOCKED -> ACTIVE`, records the supplied reason in status history, and
+emits `CreditContractUnblocked` through the transactional outbox. The event is
+routed with `credit-contract.unblocked.v1` to the lifecycle-events queue. An
+`ACTIVE` contract is not treated as an idempotent unblocking success because it
+may never have been blocked; every successful request therefore represents a
+real transition from `BLOCKED`.
 
 ## Transactional outbox
 

@@ -17,6 +17,7 @@ of choices that should survive individual tasks and conversations.
 | [010](010-contract-acceptance-before-activation.md) | Accepted, amended | Separate credit approval, client acceptance, and activation |
 | [011](011-internal-asynchronous-contract-activation.md) | Accepted, implemented | Activate accepted contracts asynchronously inside this application |
 | [012](012-synchronous-contract-blocking-command.md) | Accepted, implemented | Block active contracts through a synchronous command and emit the resulting fact |
+| [013](013-synchronous-contract-unblocking-command.md) | Accepted, implemented | Unblock blocked contracts through a synchronous command and emit the resulting fact |
 
 When a decision changes, add a new ADR that supersedes the old one. Do not
 rewrite history in a way that hides why the earlier decision was made.

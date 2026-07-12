@@ -141,4 +141,13 @@ public class RabbitMqConfiguration {
 				.to(contractEventsExchange)
 				.with(RabbitMqTopology.CREDIT_CONTRACT_BLOCKED_ROUTING_KEY);
 	}
+
+	@Bean
+	Binding creditContractUnblockedBinding(
+			DirectExchange contractEventsExchange,
+			Queue creditContractLifecycleEventsQueue) {
+		return BindingBuilder.bind(creditContractLifecycleEventsQueue)
+				.to(contractEventsExchange)
+				.with(RabbitMqTopology.CREDIT_CONTRACT_UNBLOCKED_ROUTING_KEY);
+	}
 }

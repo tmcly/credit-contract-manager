@@ -33,8 +33,8 @@ and production-oriented reliability patterns.
 Credit Contract Manager is a modular backend that owns contract state and its
 business invariants. It is intentionally more than CRUD: creating a contract
 starts an asynchronous credit analysis; approval, client acceptance,
-activation, and blocking are distinct business facts with an auditable status
-history.
+activation, blocking, and unblocking are distinct business facts with an
+auditable status history.
 
 The current implementation includes:
 
@@ -43,12 +43,12 @@ The current implementation includes:
 - asynchronous approval or rejection through RabbitMQ;
 - explicit client acceptance followed by internal asynchronous activation;
 - synchronous blocking requests restricted to active contracts;
+- synchronous unblocking requests restricted to blocked contracts;
 - transactional outbox and inbox-based idempotency;
 - bounded retries, dead-letter queues, correlation IDs, metrics, and logs;
 - deterministic local fakes and PostgreSQL/RabbitMQ integration tests.
 
-Cancellation, reanalysis, unblocking, and authentication are not implemented
-yet.
+Cancellation, reanalysis, and authentication are not implemented yet.
 
 ## Contract lifecycle
 
@@ -61,12 +61,13 @@ stateDiagram-v2
     APPROVED --> ACCEPTED: client accepts
     ACCEPTED --> ACTIVE: activation consumer
     ACTIVE --> BLOCKED: external blocking request
+    BLOCKED --> ACTIVE: external unblocking request
 ```
 
 Every transition is validated by the `CreditContract` aggregate and appended
 to `contract_status_history`. Transition-specific reasons, such as rejection or
-blocking, belong to the history entry rather than nullable columns on the
-contract.
+blocking or unblocking, belong to the history entry rather than nullable
+columns on the contract.
 
 ## Architecture
 
@@ -214,6 +215,19 @@ limited to 255 characters, and stored on the status-history transition.
 Repeating an already completed block is state-idempotent and does not create a
 second history entry or event.
 
+### 5. Unblock a blocked contract
+
+```bash
+curl -X POST http://localhost:8080/api/contracts/{id}/unblocking \
+  -H "Content-Type: application/json" \
+  -d '{"reason":"Outstanding balance settled"}'
+```
+
+Only `BLOCKED` contracts can transition back to `ACTIVE`. The reason is
+required, limited to 255 characters, and stored on the status-history
+transition. Requests for contracts in any other state return a transition
+conflict and do not emit an event.
+
 ### Endpoint summary
 
 | Method | Path | Purpose |
@@ -222,6 +236,7 @@ second history entry or event.
 | `GET` | `/api/contracts/{id}` | Read the current eventually consistent state |
 | `POST` | `/api/contracts/{id}/acceptance` | Accept an approved credit offer |
 | `POST` | `/api/contracts/{id}/blocking` | Block an active contract with a reason |
+| `POST` | `/api/contracts/{id}/unblocking` | Return a blocked contract to active status |
 | `GET` | `/health` | Lightweight application health check |
 | `GET` | `/actuator/health` | Detailed infrastructure health |
 
@@ -243,6 +258,7 @@ RabbitMQ publisher confirmation.
 | `CreditContractAccepted` | `credit-contract.accepted.v1` | `credit-contract.activation.requests.v2` |
 | `CreditContractActivated` | `credit-contract.activated.v1` | `credit-contract.activation.results` |
 | `CreditContractBlocked` | `credit-contract.blocked.v1` | `credit-contract.lifecycle.events` |
+| `CreditContractUnblocked` | `credit-contract.unblocked.v1` | `credit-contract.lifecycle.events` |
 
 Delivery is at least once. Successfully consumed event IDs are stored in the
 PostgreSQL inbox in the same transaction as their business effects. Consumer

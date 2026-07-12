@@ -8,6 +8,7 @@ import br.com.creditcontract.domain.enums.ContractStatus;
 import br.com.creditcontract.domain.event.CreditContractCreated;
 import br.com.creditcontract.domain.event.CreditContractAccepted;
 import br.com.creditcontract.domain.event.CreditContractBlocked;
+import br.com.creditcontract.domain.event.CreditContractUnblocked;
 import br.com.creditcontract.domain.valueobject.Address;
 import br.com.creditcontract.domain.valueobject.Client;
 import br.com.creditcontract.domain.valueobject.ContractId;
@@ -203,5 +204,48 @@ class CreditContractPersistenceAdapterTest {
 		assertNull(outbox.get("causation_id"));
 		assertTrue(outbox.get("payload").toString()
 				.contains("\"reason\": \"Payment overdue for more than 30 days\""));
+	}
+
+	@Test
+	@Transactional(propagation = Propagation.NOT_SUPPORTED)
+	void shouldPersistUnblockingReasonAndItsOutboxEventAtomically() {
+		ContractId id = ContractId.generate();
+		LocalDateTime now = LocalDateTime.now();
+		CreditContract contract = CreditContract.rehydrate(
+				id,
+				"CT-2026-000602",
+				new Client(
+						DocumentNumber.from("52998224725"),
+						"Maria Silva",
+						new Address("PR", "Curitiba", "Rua das Flores", "123",
+								new ZipCode("80010-000"))),
+				ContractStatus.BLOCKED,
+				MonetaryAmount.reais(new BigDecimal("5000.00")),
+				now,
+				now,
+				5L,
+				List.of());
+		repository.save(contract);
+
+		UUID correlationId = UUID.randomUUID();
+		contract.unblock("Outstanding balance settled", correlationId);
+		CreditContractUnblocked event =
+				(CreditContractUnblocked) contract.getDomainEvents().getFirst();
+		repository.save(contract);
+
+		CreditContract persisted = repository.findById(id).orElseThrow();
+		assertEquals(ContractStatus.ACTIVE, persisted.getStatus());
+		assertEquals(ContractStatus.BLOCKED,
+				persisted.getStatusHistory().getLast().previousStatus());
+		assertEquals("Outstanding balance settled",
+				persisted.getStatusHistory().getLast().reason());
+
+		Map<String, Object> outbox = jdbcTemplate.queryForMap(
+				"SELECT * FROM outbox_events WHERE event_id = ?", event.eventId());
+		assertEquals("CreditContractUnblocked", outbox.get("event_type"));
+		assertEquals(correlationId, outbox.get("correlation_id"));
+		assertNull(outbox.get("causation_id"));
+		assertTrue(outbox.get("payload").toString()
+				.contains("\"reason\": \"Outstanding balance settled\""));
 	}
 }
