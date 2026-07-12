@@ -57,7 +57,7 @@ src/main/java/br/com/creditcontract/
 └── adapter/
     ├── in/
     │   ├── rest/                      # REST controllers and DTOs
-    │   └── messaging/rabbitmq/        # credit-analysis consumer
+    │   └── messaging/rabbitmq/        # analysis and activation consumers
     └── out/
         ├── fake/                      # deterministic local integration fakes
         ├── messaging/rabbitmq/        # durable topology and confirmed publisher
@@ -85,12 +85,12 @@ src/main/java/br/com/creditcontract/
 - ✅ Asynchronous credit approval/rejection with explicit domain transitions
 - ✅ Query endpoint for eventually consistent contract state
 - ✅ Explicit client acceptance after approval with transactional outbox event
+- ✅ Asynchronous internal activation after acceptance, with inbox and DLQ
 - ✅ Inbox idempotency, bounded messaging retries, DLQ, correlation, and metrics
 - ✅ Flyway schema migration + Testcontainers integration test
 - ✅ Automated unit and PostgreSQL integration tests
 - ✅ Docker: `Dockerfile` (multi-stage) + `docker-compose.yml`
 - ⏳ Block / cancel / reanalyze use cases: not yet implemented
-- ⏳ Contract activation after downstream credit provisioning
 
 ## API
 
@@ -132,9 +132,9 @@ curl -X POST http://localhost:8080/api/contracts/{id}/acceptance
 # { "status": "ACCEPTED", "creditLimit": "5000.00", ... }
 ```
 
-Acceptance emits `CreditContractAccepted`. It is distinct from the future
-`CreditContractActivated` event, which will only be emitted after operational
-credit provisioning moves the contract from `ACCEPTED` to `ACTIVE`.
+Acceptance emits `CreditContractAccepted`. The response may briefly show
+`ACCEPTED`; this application's asynchronous activation consumer then moves the
+contract to `ACTIVE` and emits the distinct `CreditContractActivated` event.
 
 The local credit-analysis stub deterministically rejects CPFs ending in 0 or 1.
 Endings 2 through 9 are approved with limits from R$ 2,500.00 to R$ 15,000.00.
@@ -196,9 +196,13 @@ published to the durable `credit-analysis.results` queue.
 
 Client acceptance records `APPROVED -> ACCEPTED` and emits
 `CreditContractAccepted` through the same transactional outbox. The event is
-routed to the durable `credit-contract.activation.requests` queue, ready for a
-future provisioning consumer. Messages intentionally remain queued until that
-consumer exists.
+routed to the durable `credit-contract.activation.requests.v2` queue. Its consumer
+records `ACCEPTED -> ACTIVE`, stores the accepted event in the inbox, and emits
+`CreditContractActivated` atomically through the same outbox. Activated events
+are routed to `credit-contract.activation.results`; exhausted activation
+failures go to `credit-contract.activation.requests.v2.dlq`. The consumer also
+drains the legacy unversioned queue during migration; inbox idempotency makes
+duplicate delivery across both queues safe.
 
 ## Healthcheck
 

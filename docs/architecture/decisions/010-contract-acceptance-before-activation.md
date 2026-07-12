@@ -1,6 +1,6 @@
 # ADR 010: Contract Acceptance Before Activation
 
-- Status: Accepted
+- Status: Accepted; amended by ADR 011
 - Date: 2026-07-11
 
 ## Context
@@ -13,8 +13,10 @@ operational provisioning.
 
 The approval event may be consumed by a separate notification application that
 informs the client through e-mail, SMS, or a banking app. The client then needs
-an explicit command to accept the contract. Activation may still depend on a
-different service and may fail after acceptance.
+an explicit command to accept the contract. Activation was initially left open
+to a different service and possible operational provisioning. ADR 011 later
+resolves that open point: in the current business model, this application
+activates accepted contracts asynchronously without a separate provisioner.
 
 ## Decision
 
@@ -28,7 +30,7 @@ different service and may fail after acceptance.
 - Record `APPROVED -> ACCEPTED` in status history and emit the versioned
   `CreditContractAccepted` event atomically through the transactional outbox.
 - Route accepted events to the durable `credit-contract.activation.requests`
-  queue for a future provisioning consumer.
+  queue for a future activation consumer.
 - Reserve `CreditContractActivated` for the distinct future transition
   `ACCEPTED -> ACTIVE`. This increment does not emit it.
 - Keep authentication, legal terms versioning, signature evidence, offer

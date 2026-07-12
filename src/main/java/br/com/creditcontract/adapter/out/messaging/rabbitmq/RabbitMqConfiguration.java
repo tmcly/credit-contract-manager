@@ -51,8 +51,36 @@ public class RabbitMqConfiguration {
 	}
 
 	@Bean
+	Queue legacyCreditContractActivationRequestsQueue() {
+		return new Queue(RabbitMqTopology.LEGACY_CREDIT_CONTRACT_ACTIVATION_REQUESTS_QUEUE, true);
+	}
+
+	@Bean
 	Queue creditContractActivationRequestsQueue() {
-		return new Queue(RabbitMqTopology.CREDIT_CONTRACT_ACTIVATION_REQUESTS_QUEUE, true);
+		return QueueBuilder.durable(RabbitMqTopology.CREDIT_CONTRACT_ACTIVATION_REQUESTS_QUEUE)
+				.deadLetterExchange(RabbitMqTopology.DEAD_LETTER_EXCHANGE)
+				.deadLetterRoutingKey(
+						RabbitMqTopology.CREDIT_CONTRACT_ACTIVATION_DEAD_LETTER_ROUTING_KEY)
+				.build();
+	}
+
+	@Bean
+	Queue creditContractActivationDeadLetterQueue() {
+		return QueueBuilder.durable(RabbitMqTopology.CREDIT_CONTRACT_ACTIVATION_DLQ).build();
+	}
+
+	@Bean
+	Binding creditContractActivationDeadLetterBinding(
+			DirectExchange deadLetterExchange,
+			Queue creditContractActivationDeadLetterQueue) {
+		return BindingBuilder.bind(creditContractActivationDeadLetterQueue)
+				.to(deadLetterExchange)
+				.with(RabbitMqTopology.CREDIT_CONTRACT_ACTIVATION_DEAD_LETTER_ROUTING_KEY);
+	}
+
+	@Bean
+	Queue creditContractActivationResultsQueue() {
+		return new Queue(RabbitMqTopology.CREDIT_CONTRACT_ACTIVATION_RESULTS_QUEUE, true);
 	}
 
 	@Bean
@@ -89,5 +117,14 @@ public class RabbitMqConfiguration {
 		return BindingBuilder.bind(creditContractActivationRequestsQueue)
 				.to(contractEventsExchange)
 				.with(RabbitMqTopology.CREDIT_CONTRACT_ACCEPTED_ROUTING_KEY);
+	}
+
+	@Bean
+	Binding creditContractActivatedBinding(
+			DirectExchange contractEventsExchange,
+			Queue creditContractActivationResultsQueue) {
+		return BindingBuilder.bind(creditContractActivationResultsQueue)
+				.to(contractEventsExchange)
+				.with(RabbitMqTopology.CREDIT_CONTRACT_ACTIVATED_ROUTING_KEY);
 	}
 }

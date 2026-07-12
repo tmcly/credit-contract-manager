@@ -36,8 +36,9 @@ Already implemented:
 - local Docker log aggregation through Grafana Alloy, Loki, and Grafana.
 - correlated structured JSON application logs with safe fields and provisioned
   Grafana filters.
-- explicit client acceptance after analysis approval, with a versioned event
-  routed to a future activation consumer.
+- explicit client acceptance after analysis approval, with a versioned event;
+- asynchronous internal contract activation with inbox idempotency, a versioned
+  result event, bounded retries, and a dedicated DLQ.
 
 ## Phase 1: Generate contract numbers with PostgreSQL ✅
 
@@ -330,12 +331,53 @@ that downstream credit provisioning has already activated it.
 - The accepted event reaches the durable activation-request queue.
 - No activation event is emitted before provisioning exists.
 
+## Phase 8: Activate accepted contracts asynchronously ✅
+
+Status: completed.
+
+Implementation note: ADR 011 confirms that the current business flow needs an
+internal activation consumer, not an external provisioner.
+
+Suggested branch:
+
+```text
+feat/activate-accepted-contracts
+```
+
+### Goal
+
+Consume the client's accepted fact and make the contract active without
+collapsing consent and activation into the HTTP transaction.
+
+### Scope
+
+- Add the explicit aggregate transition `ACCEPTED -> ACTIVE`.
+- Consume `CreditContractAccepted` from the versioned
+  `credit-contract.activation.requests.v2` queue inside this application while
+  draining the legacy queue during migration.
+- Invoke an application use case instead of changing persistence directly in
+  the RabbitMQ adapter.
+- Persist the active state, status history, inbox entry, and
+  `CreditContractActivated` outbox event atomically.
+- Preserve correlation and use the accepted event ID as causation metadata.
+- Apply bounded retry and route exhausted deliveries to a dedicated DLQ.
+- Route activated events to a durable activation-results queue.
+- Test successful activation, duplicate delivery, event lineage, and poison
+  message dead-lettering.
+
+### Acceptance criteria
+
+- Only an `ACCEPTED` contract can transition to `ACTIVE`.
+- Duplicate accepted events do not duplicate history or activated events.
+- Active state, inbox, and `CreditContractActivated` commit atomically.
+- Activated events preserve correlation and causation IDs.
+- Poison activation messages reach the dedicated DLQ after bounded retries.
+
 ## Follow-up backlog
 
 These items are valuable but should not interrupt the ordered phases above
 unless a concrete requirement changes priority:
 
-- provision accepted contracts and emit `CreditContractActivated`;
 - explicit block, cancel, and reanalyze use cases;
 - read endpoints and pagination;
 - optimistic-lock conflict handling;

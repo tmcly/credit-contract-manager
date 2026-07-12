@@ -3,6 +3,7 @@ package br.com.creditcontract.domain.entity;
 import br.com.creditcontract.domain.enums.ContractStatus;
 import br.com.creditcontract.domain.event.CreditContractCreated;
 import br.com.creditcontract.domain.event.CreditContractAccepted;
+import br.com.creditcontract.domain.event.CreditContractActivated;
 import br.com.creditcontract.domain.event.CreditAnalysisApproved;
 import br.com.creditcontract.domain.event.CreditAnalysisRejected;
 import br.com.creditcontract.domain.event.EventContext;
@@ -151,6 +152,38 @@ class CreditContractTest {
 		CreditContract contract = sample();
 		assertThrows(InvalidContractTransitionException.class,
 				() -> contract.accept(UUID.randomUUID()));
+	}
+
+	@Test
+	void shouldActivateOnlyAcceptedContractAndRecordCausation() {
+		CreditContract contract = sample();
+		EventContext analysisContext = new EventContext(UUID.randomUUID(), UUID.randomUUID());
+		contract.startCreditAnalysis();
+		contract.approveCreditAnalysis(
+				MonetaryAmount.reais(new BigDecimal("5000.00")), analysisContext);
+		contract.accept(UUID.randomUUID());
+		EventContext activationContext = new EventContext(UUID.randomUUID(), UUID.randomUUID());
+
+		contract.activate(activationContext);
+
+		assertEquals(ContractStatus.ACTIVE, contract.getStatus());
+		assertEquals(ContractStatus.ACCEPTED,
+				contract.getStatusHistory().getLast().previousStatus());
+		assertEquals(ContractStatus.ACTIVE,
+				contract.getStatusHistory().getLast().newStatus());
+		assertEquals("Contract activated after client acceptance",
+				contract.getStatusHistory().getLast().reason());
+		CreditContractActivated event = assertInstanceOf(
+				CreditContractActivated.class, contract.getDomainEvents().getLast());
+		assertEquals(activationContext.correlationId(), event.correlationId());
+		assertEquals(activationContext.causationId(), event.causationId());
+	}
+
+	@Test
+	void shouldRejectActivationBeforeAcceptance() {
+		CreditContract contract = sample();
+		assertThrows(InvalidContractTransitionException.class,
+				() -> contract.activate(new EventContext(UUID.randomUUID(), UUID.randomUUID())));
 	}
 
 	@Test

@@ -5,6 +5,7 @@ import br.com.creditcontract.domain.event.CreditAnalysisApproved;
 import br.com.creditcontract.domain.event.CreditAnalysisRejected;
 import br.com.creditcontract.domain.event.CreditContractCreated;
 import br.com.creditcontract.domain.event.CreditContractAccepted;
+import br.com.creditcontract.domain.event.CreditContractActivated;
 import br.com.creditcontract.domain.event.DomainEvent;
 import br.com.creditcontract.domain.event.EventContext;
 import br.com.creditcontract.domain.exception.InvalidContractTransitionException;
@@ -167,6 +168,13 @@ public class CreditContract {
 		Objects.requireNonNull(correlationId, "correlation id is required");
 		transitionTo(ContractStatus.ACCEPTED, "Contract accepted by client");
 		domainEvents.add(CreditContractAccepted.create(id, updatedAt, correlationId));
+	}
+
+	public void activate(EventContext context) {
+		requireStatus(ContractStatus.ACCEPTED, ContractStatus.ACTIVE);
+		Objects.requireNonNull(context, "event context is required");
+		transitionTo(ContractStatus.ACTIVE, "Contract activated after client acceptance");
+		domainEvents.add(CreditContractActivated.create(id, updatedAt, context));
 	}
 
 	public boolean hasCreditAnalysisFinished() {
