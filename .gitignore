@@ -31,3 +31,7 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Generated AI documentation ###
+docs/comprehensive_documentation.html
+docs/documentation.html
