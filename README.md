@@ -84,11 +84,13 @@ src/main/java/br/com/creditcontract/
 - ✅ Confirmed outbox publication through RabbitMQ
 - ✅ Asynchronous credit approval/rejection with explicit domain transitions
 - ✅ Query endpoint for eventually consistent contract state
+- ✅ Explicit client acceptance after approval with transactional outbox event
 - ✅ Inbox idempotency, bounded messaging retries, DLQ, correlation, and metrics
 - ✅ Flyway schema migration + Testcontainers integration test
 - ✅ Automated unit and PostgreSQL integration tests
 - ✅ Docker: `Dockerfile` (multi-stage) + `docker-compose.yml`
 - ⏳ Block / cancel / reanalyze use cases: not yet implemented
+- ⏳ Contract activation after downstream credit provisioning
 
 ## API
 
@@ -119,6 +121,20 @@ curl http://localhost:8080/api/contracts/{id}
 # Approved result includes:
 # { "status": "APPROVED", "creditLimit": "5000.00" }
 ```
+
+Approval means that credit analysis offered a limit; it does not mean that the
+client accepted or activated the contract. An approved contract can be accepted
+explicitly:
+
+```bash
+curl -X POST http://localhost:8080/api/contracts/{id}/acceptance
+
+# { "status": "ACCEPTED", "creditLimit": "5000.00", ... }
+```
+
+Acceptance emits `CreditContractAccepted`. It is distinct from the future
+`CreditContractActivated` event, which will only be emitted after operational
+credit provisioning moves the contract from `ACCEPTED` to `ACTIVE`.
 
 The local credit-analysis stub deterministically rejects CPFs ending in 0 or 1.
 Endings 2 through 9 are approved with limits from R$ 2,500.00 to R$ 15,000.00.
@@ -177,6 +193,12 @@ The `credit-contract.created.v1` binding routes creation events to the
 the analysis provider, and stores either `CreditAnalysisApproved` or
 `CreditAnalysisRejected` atomically with the terminal state. Both outcomes are
 published to the durable `credit-analysis.results` queue.
+
+Client acceptance records `APPROVED -> ACCEPTED` and emits
+`CreditContractAccepted` through the same transactional outbox. The event is
+routed to the durable `credit-contract.activation.requests` queue, ready for a
+future provisioning consumer. Messages intentionally remain queued until that
+consumer exists.
 
 ## Healthcheck
 

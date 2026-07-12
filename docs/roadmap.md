@@ -36,6 +36,8 @@ Already implemented:
 - local Docker log aggregation through Grafana Alloy, Loki, and Grafana.
 - correlated structured JSON application logs with safe fields and provisioned
   Grafana filters.
+- explicit client acceptance after analysis approval, with a versioned event
+  routed to a future activation consumer.
 
 ## Phase 1: Generate contract numbers with PostgreSQL ✅
 
@@ -290,12 +292,51 @@ Make at-least-once messaging behavior explicit, recoverable, and observable.
 - Metrics and logs explain whether a message is pending, retrying, completed, or
   dead-lettered.
 
+## Phase 7: Add explicit contract acceptance ✅
+
+Status: completed.
+
+Implementation note: ADR 010 separates analysis approval, client consent, and
+operational activation. `CreditContractAccepted` and the future
+`CreditContractActivated` are distinct events.
+
+Suggested branch:
+
+```text
+feat/add-contract-acceptance
+```
+
+### Goal
+
+Let the client explicitly accept an approved credit offer without pretending
+that downstream credit provisioning has already activated it.
+
+### Scope
+
+- Add `ACCEPTED` between `APPROVED` and `ACTIVE`.
+- Add an explicit aggregate acceptance transition and status-history entry.
+- Expose `POST /api/contracts/{id}/acceptance`.
+- Treat repeated acceptance as idempotent.
+- Emit `CreditContractAccepted` atomically through the outbox.
+- Route accepted events to `credit-contract.activation.requests`.
+- Keep `CreditContractActivated` reserved for the future provisioning flow.
+- Document authentication and legal acceptance evidence as later requirements.
+
+### Acceptance criteria
+
+- Only an `APPROVED` contract can transition to `ACCEPTED`.
+- A repeated acceptance does not duplicate history or events.
+- Contract state and `CreditContractAccepted` commit atomically.
+- The accepted event reaches the durable activation-request queue.
+- No activation event is emitted before provisioning exists.
+
 ## Follow-up backlog
 
 These items are valuable but should not interrupt the ordered phases above
 unless a concrete requirement changes priority:
 
-- explicit block, cancel, activate, and reanalyze use cases;
+- provision accepted contracts and emit `CreditContractActivated`;
+- explicit block, cancel, and reanalyze use cases;
 - read endpoints and pagination;
 - optimistic-lock conflict handling;
 - GitHub Actions CI with unit and integration tests;

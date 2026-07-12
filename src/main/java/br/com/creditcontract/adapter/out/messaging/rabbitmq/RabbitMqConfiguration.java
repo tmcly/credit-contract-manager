@@ -51,6 +51,11 @@ public class RabbitMqConfiguration {
 	}
 
 	@Bean
+	Queue creditContractActivationRequestsQueue() {
+		return new Queue(RabbitMqTopology.CREDIT_CONTRACT_ACTIVATION_REQUESTS_QUEUE, true);
+	}
+
+	@Bean
 	Binding creditContractCreatedBinding(
 			DirectExchange contractEventsExchange,
 			Queue creditAnalysisRequestsQueue) {
@@ -75,5 +80,14 @@ public class RabbitMqConfiguration {
 		return BindingBuilder.bind(creditAnalysisResultsQueue)
 				.to(contractEventsExchange)
 				.with(RabbitMqTopology.CREDIT_ANALYSIS_REJECTED_ROUTING_KEY);
+	}
+
+	@Bean
+	Binding creditContractAcceptedBinding(
+			DirectExchange contractEventsExchange,
+			Queue creditContractActivationRequestsQueue) {
+		return BindingBuilder.bind(creditContractActivationRequestsQueue)
+				.to(contractEventsExchange)
+				.with(RabbitMqTopology.CREDIT_CONTRACT_ACCEPTED_ROUTING_KEY);
 	}
 }

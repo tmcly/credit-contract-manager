@@ -1,6 +1,7 @@
 package br.com.creditcontract.adapter.out.persistence.outbox;
 
 import br.com.creditcontract.domain.event.CreditContractCreated;
+import br.com.creditcontract.domain.event.CreditContractAccepted;
 import br.com.creditcontract.domain.event.CreditAnalysisApproved;
 import br.com.creditcontract.domain.event.CreditAnalysisRejected;
 import br.com.creditcontract.domain.event.DomainEvent;
@@ -30,6 +31,9 @@ public class OutboxEventSerializer {
 		}
 		if (event instanceof CreditAnalysisRejected rejected) {
 			return serialize(rejected);
+		}
+		if (event instanceof CreditContractAccepted accepted) {
+			return write(accepted, commonPayload(accepted));
 		}
 		throw new IllegalArgumentException("unsupported domain event: " + event.eventType());
 	}

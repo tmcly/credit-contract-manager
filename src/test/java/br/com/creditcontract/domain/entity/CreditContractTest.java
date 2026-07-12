@@ -2,6 +2,7 @@ package br.com.creditcontract.domain.entity;
 
 import br.com.creditcontract.domain.enums.ContractStatus;
 import br.com.creditcontract.domain.event.CreditContractCreated;
+import br.com.creditcontract.domain.event.CreditContractAccepted;
 import br.com.creditcontract.domain.event.CreditAnalysisApproved;
 import br.com.creditcontract.domain.event.CreditAnalysisRejected;
 import br.com.creditcontract.domain.event.EventContext;
@@ -16,6 +17,7 @@ import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -117,6 +119,38 @@ class CreditContractTest {
 		assertThrows(IllegalArgumentException.class,
 				() -> contract.approveCreditAnalysis(
 						MonetaryAmount.reais(BigDecimal.ZERO), context));
+	}
+
+	@Test
+	void shouldAcceptOnlyApprovedContractAndRecordOutcomeEvent() {
+		CreditContract contract = sample();
+		EventContext analysisContext = new EventContext(UUID.randomUUID(), UUID.randomUUID());
+		UUID acceptanceCorrelationId = UUID.randomUUID();
+		contract.startCreditAnalysis();
+		contract.approveCreditAnalysis(
+				MonetaryAmount.reais(new BigDecimal("5000.00")), analysisContext);
+
+		contract.accept(acceptanceCorrelationId);
+
+		assertEquals(ContractStatus.ACCEPTED, contract.getStatus());
+		assertEquals(new BigDecimal("5000.00"), contract.getCreditLimit().amount());
+		assertEquals(ContractStatus.APPROVED,
+				contract.getStatusHistory().getLast().previousStatus());
+		assertEquals(ContractStatus.ACCEPTED,
+				contract.getStatusHistory().getLast().newStatus());
+		assertEquals("Contract accepted by client",
+				contract.getStatusHistory().getLast().reason());
+		CreditContractAccepted event = assertInstanceOf(
+				CreditContractAccepted.class, contract.getDomainEvents().getLast());
+		assertEquals(acceptanceCorrelationId, event.correlationId());
+		assertNull(event.causationId());
+	}
+
+	@Test
+	void shouldRejectAcceptanceBeforeApproval() {
+		CreditContract contract = sample();
+		assertThrows(InvalidContractTransitionException.class,
+				() -> contract.accept(UUID.randomUUID()));
 	}
 
 	@Test
