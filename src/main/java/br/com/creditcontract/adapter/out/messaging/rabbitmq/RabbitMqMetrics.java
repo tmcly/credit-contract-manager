@@ -34,6 +34,11 @@ public class RabbitMqMetrics {
 				metrics -> metrics.messageCount(RabbitMqTopology.CREDIT_CONTRACT_ACTIVATION_DLQ))
 				.tag("queue", RabbitMqTopology.CREDIT_CONTRACT_ACTIVATION_DLQ)
 				.register(meterRegistry);
+		Gauge.builder("credit_contract.rabbitmq.queue.depth", this,
+				metrics -> metrics.messageCount(
+						RabbitMqTopology.CREDIT_CONTRACT_LIFECYCLE_EVENTS_QUEUE))
+				.tag("queue", RabbitMqTopology.CREDIT_CONTRACT_LIFECYCLE_EVENTS_QUEUE)
+				.register(meterRegistry);
 	}
 
 	private double messageCount(String queue) {

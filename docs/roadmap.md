@@ -38,7 +38,9 @@ Already implemented:
   Grafana filters.
 - explicit client acceptance after analysis approval, with a versioned event;
 - asynchronous internal contract activation with inbox idempotency, a versioned
-  result event, bounded retries, and a dedicated DLQ.
+  result event, bounded retries, and a dedicated DLQ;
+- synchronous blocking of active contracts with a required history reason and
+  versioned `CreditContractBlocked` outbox event.
 
 ## Phase 1: Generate contract numbers with PostgreSQL ✅
 
@@ -373,12 +375,53 @@ collapsing consent and activation into the HTTP transaction.
 - Activated events preserve correlation and causation IDs.
 - Poison activation messages reach the dedicated DLQ after bounded retries.
 
+## Phase 9: Block active contracts through an external command ✅
+
+Status: completed.
+
+Implementation note: ADR 012 keeps the current entry point synchronous while
+allowing a future collection-event consumer to reuse the application and domain
+rules.
+
+Suggested branch:
+
+```text
+feat/block-active-contracts
+```
+
+### Goal
+
+Let another application request a contract block while this bounded context
+remains responsible for validating and recording the lifecycle transition.
+
+### Scope
+
+- Expose `POST /api/contracts/{id}/blocking` with a required reason.
+- Permit only `ACTIVE -> BLOCKED` in the aggregate.
+- Store the reason on the generic status-history transition.
+- Treat repeated blocking of an already blocked contract as idempotent.
+- Emit `CreditContractBlocked` atomically through the outbox.
+- Route the event through `credit-contract.blocked.v1` to a durable local
+  lifecycle-events queue.
+- Preserve request correlation without inventing an inbound event causation ID.
+- Keep a future collection-rules consumer as an adapter that can reuse the same
+  use case.
+
+### Acceptance criteria
+
+- `UNDER_REVIEW` and every non-`ACTIVE` state fail with a transition conflict.
+- A successful request records one `ACTIVE -> BLOCKED` history entry with its
+  reason.
+- Repeated requests do not duplicate history or events.
+- Blocked state and `CreditContractBlocked` commit atomically.
+- The event reaches the durable lifecycle-events queue with its correlation ID.
+
 ## Follow-up backlog
 
 These items are valuable but should not interrupt the ordered phases above
 unless a concrete requirement changes priority:
 
-- explicit block, cancel, and reanalyze use cases;
+- explicit cancel and reanalyze use cases;
 - read endpoints and pagination;
 - optimistic-lock conflict handling;
 - GitHub Actions CI with unit and integration tests;

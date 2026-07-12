@@ -11,6 +11,8 @@ public final class RabbitMqTopology {
 	public static final String CREDIT_CONTRACT_ACTIVATION_REQUESTS_QUEUE =
 			"credit-contract.activation.requests.v2";
 	public static final String CREDIT_CONTRACT_ACTIVATION_RESULTS_QUEUE = "credit-contract.activation.results";
+	public static final String CREDIT_CONTRACT_LIFECYCLE_EVENTS_QUEUE =
+			"credit-contract.lifecycle.events";
 	public static final String DEAD_LETTER_EXCHANGE = "credit-contract.dead-letter";
 	public static final String CREDIT_ANALYSIS_DLQ = "credit-analysis.requests.dlq";
 	public static final String CREDIT_CONTRACT_ACTIVATION_DLQ =
@@ -23,6 +25,7 @@ public final class RabbitMqTopology {
 	public static final String CREDIT_ANALYSIS_REJECTED_ROUTING_KEY = "credit-analysis.rejected.v1";
 	public static final String CREDIT_CONTRACT_ACCEPTED_ROUTING_KEY = "credit-contract.accepted.v1";
 	public static final String CREDIT_CONTRACT_ACTIVATED_ROUTING_KEY = "credit-contract.activated.v1";
+	public static final String CREDIT_CONTRACT_BLOCKED_ROUTING_KEY = "credit-contract.blocked.v1";
 
 	private RabbitMqTopology() {
 	}

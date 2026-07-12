@@ -8,6 +8,7 @@ import br.com.creditcontract.domain.event.CreditAnalysisRejected;
 import br.com.creditcontract.domain.event.CreditContractCreated;
 import br.com.creditcontract.domain.event.CreditContractAccepted;
 import br.com.creditcontract.domain.event.CreditContractActivated;
+import br.com.creditcontract.domain.event.CreditContractBlocked;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageBuilder;
 import org.springframework.amqp.core.MessageDeliveryMode;
@@ -77,6 +78,9 @@ public class RabbitMqEventPublisher implements EventPublisher {
 		}
 		if (CreditContractActivated.EVENT_TYPE.equals(event.eventType()) && event.schemaVersion() == 1) {
 			return RabbitMqTopology.CREDIT_CONTRACT_ACTIVATED_ROUTING_KEY;
+		}
+		if (CreditContractBlocked.EVENT_TYPE.equals(event.eventType()) && event.schemaVersion() == 1) {
+			return RabbitMqTopology.CREDIT_CONTRACT_BLOCKED_ROUTING_KEY;
 		}
 		throw new IllegalArgumentException(
 				"unsupported event routing: " + event.eventType() + " v" + event.schemaVersion());

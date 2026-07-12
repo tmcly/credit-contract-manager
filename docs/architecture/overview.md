@@ -91,6 +91,7 @@ stateDiagram-v2
     UNDER_REVIEW --> REJECTED: rejectCreditAnalysis(reason)
     APPROVED --> ACCEPTED: accept
     ACCEPTED --> ACTIVE: activation consumer
+    ACTIVE --> BLOCKED: block(reason)
 ```
 
 ## Persistence boundary
@@ -219,6 +220,13 @@ the accepted event in the inbox, and emits the separate
 activation failures are routed to a dedicated dead-letter queue.
 The consumer also drains the legacy unversioned queue so existing local brokers
 can migrate without deleting queued acceptance events.
+
+An external application can synchronously request blocking through the REST
+adapter. The application use case loads the aggregate, which alone permits
+`ACTIVE -> BLOCKED`, records the supplied reason in status history, and emits
+`CreditContractBlocked` through the outbox. The fact is routed with
+`credit-contract.blocked.v1`; future downstream services can bind their own
+queues without changing the blocking rule.
 
 ## Transactional outbox
 
