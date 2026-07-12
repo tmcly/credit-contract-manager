@@ -6,6 +6,8 @@ public final class RabbitMqTopology {
 	public static final String CONTRACT_EVENTS_EXCHANGE = "credit-contract.events";
 	public static final String CREDIT_ANALYSIS_REQUESTS_QUEUE = "credit-analysis.requests";
 	public static final String CREDIT_ANALYSIS_RESULTS_QUEUE = "credit-analysis.results";
+	public static final String CREDIT_REANALYSIS_REQUESTS_QUEUE = "credit-reanalysis.requests";
+	public static final String CREDIT_REANALYSIS_RESULTS_QUEUE = "credit-reanalysis.results";
 	public static final String LEGACY_CREDIT_CONTRACT_ACTIVATION_REQUESTS_QUEUE =
 			"credit-contract.activation.requests";
 	public static final String CREDIT_CONTRACT_ACTIVATION_REQUESTS_QUEUE =
@@ -15,14 +17,23 @@ public final class RabbitMqTopology {
 			"credit-contract.lifecycle.events";
 	public static final String DEAD_LETTER_EXCHANGE = "credit-contract.dead-letter";
 	public static final String CREDIT_ANALYSIS_DLQ = "credit-analysis.requests.dlq";
+	public static final String CREDIT_REANALYSIS_DLQ = "credit-reanalysis.requests.dlq";
 	public static final String CREDIT_CONTRACT_ACTIVATION_DLQ =
 			"credit-contract.activation.requests.v2.dlq";
 	public static final String CREDIT_ANALYSIS_DEAD_LETTER_ROUTING_KEY = "credit-analysis.requests.failed";
+	public static final String CREDIT_REANALYSIS_DEAD_LETTER_ROUTING_KEY =
+			"credit-reanalysis.requests.failed";
 	public static final String CREDIT_CONTRACT_ACTIVATION_DEAD_LETTER_ROUTING_KEY =
 			"credit-contract.activation.requests.v2.failed";
 	public static final String CREDIT_CONTRACT_CREATED_ROUTING_KEY = "credit-contract.created.v1";
 	public static final String CREDIT_ANALYSIS_APPROVED_ROUTING_KEY = "credit-analysis.approved.v1";
 	public static final String CREDIT_ANALYSIS_REJECTED_ROUTING_KEY = "credit-analysis.rejected.v1";
+	public static final String CREDIT_REANALYSIS_REQUESTED_ROUTING_KEY =
+			"credit-reanalysis.requested.v1";
+	public static final String CREDIT_REANALYSIS_APPROVED_ROUTING_KEY =
+			"credit-reanalysis.approved.v1";
+	public static final String CREDIT_REANALYSIS_REJECTED_ROUTING_KEY =
+			"credit-reanalysis.rejected.v1";
 	public static final String CREDIT_CONTRACT_ACCEPTED_ROUTING_KEY = "credit-contract.accepted.v1";
 	public static final String CREDIT_CONTRACT_ACTIVATED_ROUTING_KEY = "credit-contract.activated.v1";
 	public static final String CREDIT_CONTRACT_BLOCKED_ROUTING_KEY = "credit-contract.blocked.v1";

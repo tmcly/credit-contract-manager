@@ -45,6 +45,9 @@ Already implemented:
   and versioned `CreditContractUnblocked` outbox event.
 - requester-aware manual cancellation and automatic cancellation after a
   configurable 90-day blocked period.
+- client-requested asynchronous credit reanalysis for active contracts, with a
+  configurable 30-day cooldown, deterministic local outcomes, durable audit,
+  inbox idempotency, and before/after limit events.
 
 ## Phase 1: Generate contract numbers with PostgreSQL ✅
 
@@ -486,12 +489,43 @@ does not regularize within the configured period.
 - Cancelled events reach the durable lifecycle-events queue.
 - README, architecture, ADRs, and configuration describe the policy.
 
+## Phase 12: Reanalyze active-contract credit asynchronously ✅
+
+Status: completed.
+
+Implementation note: ADR 015 keeps an active contract usable while its new
+limit is assessed, stores each request and outcome in a dedicated audit table,
+and applies a configurable 30-day cooldown from every accepted request.
+
+Suggested branch: `feat/reanalyze-credit-contracts`.
+
+### Goal
+
+Let a client request a new credit assessment without spamming the provider or
+collapsing an active contract into the initial-analysis lifecycle.
+
+### Scope and acceptance criteria
+
+- `POST /api/contracts/{id}/credit-reanalysis` accepts only `ACTIVE` contracts
+  and returns `202 Accepted`.
+- A second request inside 30 days returns `429` with its next eligible date.
+- Request and outcome audit records survive independently of outbox retention.
+- `CreditReanalysisRequested` drives a durable, retryable, inbox-idempotent
+  RabbitMQ consumer with a dedicated DLQ.
+- Deterministic CPF bands reject or multiply the current limit by `1.5`, `2`,
+  or `3`, capped at R$ 100,000.
+- Approval retains `ACTIVE`, updates the limit, and emits previous and new
+  values; rejection retains both `ACTIVE` and the current limit.
+- A contract that stops being active before completion cannot receive an
+  increase.
+- README, architecture, ADRs, migration, tests, and event topology describe the
+  implemented behavior.
+
 ## Follow-up backlog
 
 These items are valuable but should not interrupt the ordered phases above
 unless a concrete requirement changes priority:
 
-- explicit reanalysis use case;
 - read endpoints and pagination;
 - optimistic-lock conflict handling;
 - GitHub Actions CI with unit and integration tests;

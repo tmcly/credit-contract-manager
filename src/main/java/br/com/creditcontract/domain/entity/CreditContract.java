@@ -1,22 +1,29 @@
 package br.com.creditcontract.domain.entity;
 
-import br.com.creditcontract.domain.enums.ContractStatus;
 import br.com.creditcontract.domain.enums.CancellationOrigin;
+import br.com.creditcontract.domain.enums.ContractStatus;
+import br.com.creditcontract.domain.enums.CreditReanalysisStatus;
 import br.com.creditcontract.domain.event.CreditAnalysisApproved;
 import br.com.creditcontract.domain.event.CreditAnalysisRejected;
-import br.com.creditcontract.domain.event.CreditContractCreated;
 import br.com.creditcontract.domain.event.CreditContractAccepted;
 import br.com.creditcontract.domain.event.CreditContractActivated;
 import br.com.creditcontract.domain.event.CreditContractBlocked;
-import br.com.creditcontract.domain.event.CreditContractUnblocked;
 import br.com.creditcontract.domain.event.CreditContractCancelled;
+import br.com.creditcontract.domain.event.CreditContractCreated;
+import br.com.creditcontract.domain.event.CreditContractUnblocked;
+import br.com.creditcontract.domain.event.CreditReanalysisApproved;
+import br.com.creditcontract.domain.event.CreditReanalysisRejected;
+import br.com.creditcontract.domain.event.CreditReanalysisRequested;
 import br.com.creditcontract.domain.event.DomainEvent;
 import br.com.creditcontract.domain.event.EventContext;
+import br.com.creditcontract.domain.exception.CreditReanalysisCooldownException;
+import br.com.creditcontract.domain.exception.CreditReanalysisNotAllowedException;
 import br.com.creditcontract.domain.exception.InvalidContractTransitionException;
 import br.com.creditcontract.domain.valueobject.Client;
 import br.com.creditcontract.domain.valueobject.ContractId;
 import br.com.creditcontract.domain.valueobject.MonetaryAmount;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -52,6 +59,7 @@ public class CreditContract {
 	private final LocalDateTime createdAt;
 	private final List<ContractStatusHistory> statusHistory;
 	private final List<DomainEvent> domainEvents;
+	private final List<CreditReanalysis> creditReanalyses;
 	private LocalDateTime updatedAt;
 	private Long version;
 
@@ -71,6 +79,9 @@ public class CreditContract {
 			this.statusHistory.add(ContractStatusHistory.initial(this.status, this.createdAt));
 		}
 		this.domainEvents = new ArrayList<>();
+		this.creditReanalyses = builder.creditReanalyses == null
+				? new ArrayList<>()
+				: new ArrayList<>(builder.creditReanalyses);
 		validateCreditLimitForStatus();
 	}
 
@@ -125,6 +136,21 @@ public class CreditContract {
 			LocalDateTime updatedAt,
 			Long version,
 			List<ContractStatusHistory> statusHistory) {
+		return rehydrate(id, contractNumber, client, status, creditLimit, createdAt,
+				updatedAt, version, statusHistory, List.of());
+	}
+
+	public static CreditContract rehydrate(
+			ContractId id,
+			String contractNumber,
+			Client client,
+			ContractStatus status,
+			MonetaryAmount creditLimit,
+			LocalDateTime createdAt,
+			LocalDateTime updatedAt,
+			Long version,
+			List<ContractStatusHistory> statusHistory,
+			List<CreditReanalysis> creditReanalyses) {
 		return builder()
 				.id(id)
 				.contractNumber(contractNumber)
@@ -135,7 +161,99 @@ public class CreditContract {
 				.updatedAt(updatedAt)
 				.version(version)
 				.statusHistory(statusHistory)
+				.creditReanalyses(creditReanalyses)
 				.build();
+	}
+
+	public CreditReanalysis requestCreditReanalysis(
+			LocalDateTime requestedAt, Duration cooldown, UUID correlationId) {
+		if (status != ContractStatus.ACTIVE) {
+			throw new CreditReanalysisNotAllowedException(status);
+		}
+		Objects.requireNonNull(requestedAt, "request date is required");
+		Objects.requireNonNull(cooldown, "credit reanalysis cooldown is required");
+		Objects.requireNonNull(correlationId, "correlation id is required");
+		if (cooldown.isNegative() || cooldown.isZero()) {
+			throw new IllegalArgumentException("credit reanalysis cooldown must be positive");
+		}
+		creditReanalyses.stream()
+				.map(CreditReanalysis::getRequestedAt)
+				.max(LocalDateTime::compareTo)
+				.map(lastRequest -> lastRequest.plus(cooldown))
+				.filter(nextEligibleAt -> requestedAt.isBefore(nextEligibleAt))
+				.ifPresent(nextEligibleAt -> {
+					throw new CreditReanalysisCooldownException(nextEligibleAt);
+				});
+
+		UUID requestId = UUID.randomUUID();
+		CreditReanalysis reanalysis = CreditReanalysis.request(
+				requestId, creditLimit, requestedAt);
+		creditReanalyses.add(reanalysis);
+		touch(requestedAt);
+		domainEvents.add(CreditReanalysisRequested.create(
+				requestId, id, creditLimit, requestedAt, correlationId));
+		return reanalysis;
+	}
+
+	public boolean approveCreditReanalysisRequest(
+			UUID reanalysisId,
+			MonetaryAmount approvedLimit,
+			LocalDateTime completedAt,
+			EventContext context) {
+		CreditReanalysis reanalysis = findCreditReanalysis(reanalysisId);
+		if (reanalysis.getStatus() != CreditReanalysisStatus.REQUESTED) {
+			return false;
+		}
+		if (status != ContractStatus.ACTIVE) {
+			return rejectCreditReanalysisRequest(
+					reanalysisId, "Contract is no longer active", completedAt, context);
+		}
+		if (!creditLimit.equals(reanalysis.getPreviousLimit())) {
+			return rejectCreditReanalysisRequest(
+					reanalysisId, "Credit limit changed after the request", completedAt, context);
+		}
+		reanalysis.approve(approvedLimit, completedAt);
+		MonetaryAmount previousLimit = creditLimit;
+		creditLimit = approvedLimit;
+		touch(completedAt);
+		domainEvents.add(CreditReanalysisApproved.create(
+				id, reanalysisId, previousLimit, approvedLimit, completedAt, context));
+		return true;
+	}
+
+	public boolean rejectCreditReanalysisRequest(
+			UUID reanalysisId,
+			String reason,
+			LocalDateTime completedAt,
+			EventContext context) {
+		CreditReanalysis reanalysis = findCreditReanalysis(reanalysisId);
+		if (reanalysis.getStatus() != CreditReanalysisStatus.REQUESTED) {
+			return false;
+		}
+		Objects.requireNonNull(context, "event context is required");
+		MonetaryAmount retainedLimit = Objects.requireNonNull(
+				creditLimit, "contract must retain a credit limit");
+		reanalysis.reject(reason, retainedLimit, completedAt);
+		touch(completedAt);
+		domainEvents.add(CreditReanalysisRejected.create(
+				id, reanalysisId, reanalysis.getPreviousLimit(), retainedLimit,
+				reanalysis.getReason(), completedAt, context));
+		return true;
+	}
+
+	private CreditReanalysis findCreditReanalysis(UUID reanalysisId) {
+		Objects.requireNonNull(reanalysisId, "reanalysis id is required");
+		return creditReanalyses.stream()
+				.filter(candidate -> candidate.getId().equals(reanalysisId))
+				.findFirst()
+				.orElseThrow(() -> new IllegalStateException(
+						"credit reanalysis request was not found: " + reanalysisId));
+	}
+
+	private void touch(LocalDateTime changedAt) {
+		updatedAt = Objects.requireNonNull(changedAt, "change date is required");
+		version++;
+		validateCreditLimitForStatus();
 	}
 
 	public void startCreditAnalysis() {
@@ -302,6 +420,9 @@ public class CreditContract {
 	public List<DomainEvent> getDomainEvents() {
 		return Collections.unmodifiableList(domainEvents);
 	}
+	public List<CreditReanalysis> getCreditReanalyses() {
+		return Collections.unmodifiableList(creditReanalyses);
+	}
 
 	/** Removes only events confirmed in a successfully committed transaction. */
 	public void markDomainEventsCommitted(List<DomainEvent> committedEvents) {
@@ -322,6 +443,7 @@ public class CreditContract {
 		private LocalDateTime updatedAt;
 		private Long version;
 		private List<ContractStatusHistory> statusHistory;
+		private List<CreditReanalysis> creditReanalyses;
 
 		public Builder id(ContractId id) { this.id = id; return this; }
 		public Builder contractNumber(String contractNumber) { this.contractNumber = contractNumber; return this; }
@@ -333,6 +455,10 @@ public class CreditContract {
 		public Builder version(Long version) { this.version = version; return this; }
 		public Builder statusHistory(List<ContractStatusHistory> statusHistory) {
 			this.statusHistory = statusHistory;
+			return this;
+		}
+		public Builder creditReanalyses(List<CreditReanalysis> creditReanalyses) {
+			this.creditReanalyses = creditReanalyses;
 			return this;
 		}
 

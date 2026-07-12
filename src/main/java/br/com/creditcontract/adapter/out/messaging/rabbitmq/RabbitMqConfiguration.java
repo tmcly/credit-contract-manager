@@ -51,6 +51,33 @@ public class RabbitMqConfiguration {
 	}
 
 	@Bean
+	Queue creditReanalysisRequestsQueue() {
+		return QueueBuilder.durable(RabbitMqTopology.CREDIT_REANALYSIS_REQUESTS_QUEUE)
+				.deadLetterExchange(RabbitMqTopology.DEAD_LETTER_EXCHANGE)
+				.deadLetterRoutingKey(RabbitMqTopology.CREDIT_REANALYSIS_DEAD_LETTER_ROUTING_KEY)
+				.build();
+	}
+
+	@Bean
+	Queue creditReanalysisDeadLetterQueue() {
+		return QueueBuilder.durable(RabbitMqTopology.CREDIT_REANALYSIS_DLQ).build();
+	}
+
+	@Bean
+	Binding creditReanalysisDeadLetterBinding(
+			DirectExchange deadLetterExchange,
+			Queue creditReanalysisDeadLetterQueue) {
+		return BindingBuilder.bind(creditReanalysisDeadLetterQueue)
+				.to(deadLetterExchange)
+				.with(RabbitMqTopology.CREDIT_REANALYSIS_DEAD_LETTER_ROUTING_KEY);
+	}
+
+	@Bean
+	Queue creditReanalysisResultsQueue() {
+		return new Queue(RabbitMqTopology.CREDIT_REANALYSIS_RESULTS_QUEUE, true);
+	}
+
+	@Bean
 	Queue legacyCreditContractActivationRequestsQueue() {
 		return new Queue(RabbitMqTopology.LEGACY_CREDIT_CONTRACT_ACTIVATION_REQUESTS_QUEUE, true);
 	}
@@ -113,6 +140,33 @@ public class RabbitMqConfiguration {
 		return BindingBuilder.bind(creditAnalysisResultsQueue)
 				.to(contractEventsExchange)
 				.with(RabbitMqTopology.CREDIT_ANALYSIS_REJECTED_ROUTING_KEY);
+	}
+
+	@Bean
+	Binding creditReanalysisRequestedBinding(
+			DirectExchange contractEventsExchange,
+			Queue creditReanalysisRequestsQueue) {
+		return BindingBuilder.bind(creditReanalysisRequestsQueue)
+				.to(contractEventsExchange)
+				.with(RabbitMqTopology.CREDIT_REANALYSIS_REQUESTED_ROUTING_KEY);
+	}
+
+	@Bean
+	Binding creditReanalysisApprovedBinding(
+			DirectExchange contractEventsExchange,
+			Queue creditReanalysisResultsQueue) {
+		return BindingBuilder.bind(creditReanalysisResultsQueue)
+				.to(contractEventsExchange)
+				.with(RabbitMqTopology.CREDIT_REANALYSIS_APPROVED_ROUTING_KEY);
+	}
+
+	@Bean
+	Binding creditReanalysisRejectedBinding(
+			DirectExchange contractEventsExchange,
+			Queue creditReanalysisResultsQueue) {
+		return BindingBuilder.bind(creditReanalysisResultsQueue)
+				.to(contractEventsExchange)
+				.with(RabbitMqTopology.CREDIT_REANALYSIS_REJECTED_ROUTING_KEY);
 	}
 
 	@Bean

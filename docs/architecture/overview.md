@@ -80,8 +80,12 @@ Contracts are created as `DRAFT` without a limit. Analysis first moves them to
 `UNDER_REVIEW`, then to `APPROVED` with a positive limit or `REJECTED` without a
 limit. Approval does not activate the credit: the client must explicitly accept
 the contract before this application's asynchronous activation consumer moves
-it to `ACTIVE`. Every
-transition is explicit in the aggregate and appended to history.
+it to `ACTIVE`. Every transition is explicit in the aggregate and appended to
+history.
+
+An active contract can also own multiple `CreditReanalysis` child entities.
+Reanalysis does not change contract status: each child records its request and
+outcome while an approved result updates the aggregate's current limit.
 
 ```mermaid
 stateDiagram-v2
@@ -95,6 +99,7 @@ stateDiagram-v2
     BLOCKED --> ACTIVE: unblock(reason)
     ACTIVE --> CANCELLED: client or legal request
     BLOCKED --> CANCELLED: legal request or expiration
+    ACTIVE --> ACTIVE: approved credit reanalysis
 ```
 
 ## Persistence boundary
@@ -124,6 +129,7 @@ statuses, non-negative monetary values, uniqueness, and referential integrity.
 erDiagram
     CREDIT_CONTRACTS ||--o{ CONTRACT_STATUS_HISTORY : "records"
     CREDIT_CONTRACTS ||--o{ OUTBOX_EVENTS : "emits logically"
+    CREDIT_CONTRACTS ||--o{ CREDIT_REANALYSES : "audits"
 
     CREDIT_CONTRACTS {
         uuid id PK
@@ -167,6 +173,17 @@ erDiagram
         timestamp published_at
         text last_error
         timestamp created_at
+    }
+
+    CREDIT_REANALYSES {
+        uuid id PK
+        uuid contract_id FK
+        varchar status
+        numeric previous_limit
+        numeric new_limit
+        varchar reason
+        timestamp requested_at
+        timestamp completed_at
     }
 ```
 
@@ -246,6 +263,15 @@ contracts whose `updatedAt` is at or before the configured cutoff and applies
 `BLOCKED -> CANCELLED` in bounded batches. The default cutoff is 90 days after
 blocking and remains configuration, not a hard-coded legal claim. Every path
 emits `CreditContractCancelled` with its origin through the outbox.
+
+Credit reanalysis enters synchronously through REST only for `ACTIVE` contracts.
+The aggregate appends an auditable `REQUESTED` child record and emits
+`CreditReanalysisRequested` atomically. A RabbitMQ consumer invokes the
+reanalysis provider outside the database transaction, then revalidates the
+aggregate and stores `APPROVED` with an increased limit or `REJECTED` with the
+retained limit. The contract stays `ACTIVE` throughout. A configurable 30-day
+cooldown is calculated from the latest accepted request, and result delivery is
+idempotent through the processed-message inbox.
 
 ## Transactional outbox
 
