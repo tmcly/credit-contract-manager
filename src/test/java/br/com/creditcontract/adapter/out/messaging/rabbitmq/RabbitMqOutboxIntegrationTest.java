@@ -171,6 +171,41 @@ class RabbitMqOutboxIntegrationTest {
 		assertTrue(payload.contains("Payment overdue"));
 	}
 
+	@Test
+	void shouldRouteUnblockedContractToLifecycleEventsQueue() {
+		LocalDateTime now = LocalDateTime.now();
+		CreditContract contract = CreditContract.rehydrate(
+				ContractId.generate(),
+				"CT-2026-000104",
+				new Client(
+						DocumentNumber.from("52998224725"),
+						"Maria Silva",
+						new Address("PR", "Curitiba", "Rua das Flores", "123",
+								new ZipCode("80010-000"))),
+				ContractStatus.BLOCKED,
+				MonetaryAmount.reais(new BigDecimal("5000.00")),
+				now,
+				now,
+				5L,
+				List.of());
+		repository.save(contract);
+		UUID correlationId = UUID.randomUUID();
+		contract.unblock("Balance settled", correlationId);
+		repository.save(contract);
+
+		relay.publishPending();
+
+		Message message = rabbitTemplate.receive(
+				RabbitMqTopology.CREDIT_CONTRACT_LIFECYCLE_EVENTS_QUEUE,
+				Duration.ofSeconds(10).toMillis());
+		assertNotNull(message);
+		assertEquals("CreditContractUnblocked", message.getMessageProperties().getType());
+		assertEquals(correlationId.toString(), message.getMessageProperties().getCorrelationId());
+		String payload = new String(message.getBody(), StandardCharsets.UTF_8);
+		assertTrue(payload.contains(contract.getId().value().toString()));
+		assertTrue(payload.contains("Balance settled"));
+	}
+
 	private CreditContract sampleContract() {
 		return CreditContract.create(
 				ContractId.generate(),

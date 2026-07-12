@@ -41,6 +41,8 @@ Already implemented:
   result event, bounded retries, and a dedicated DLQ;
 - synchronous blocking of active contracts with a required history reason and
   versioned `CreditContractBlocked` outbox event.
+- synchronous unblocking of blocked contracts with a required history reason
+  and versioned `CreditContractUnblocked` outbox event.
 
 ## Phase 1: Generate contract numbers with PostgreSQL ✅
 
@@ -414,6 +416,46 @@ remains responsible for validating and recording the lifecycle transition.
   reason.
 - Repeated requests do not duplicate history or events.
 - Blocked state and `CreditContractBlocked` commit atomically.
+- The event reaches the durable lifecycle-events queue with its correlation ID.
+
+## Phase 10: Unblock blocked contracts through an external command ✅
+
+Status: completed.
+
+Implementation note: ADR 013 mirrors the synchronous blocking boundary while
+preserving the stricter rule that only a currently `BLOCKED` contract can be
+unblocked.
+
+Suggested branch:
+
+```text
+feat/unblock-credit-contracts
+```
+
+### Goal
+
+Let another application remove a contract block while this bounded context
+remains responsible for validating and recording the lifecycle transition.
+
+### Scope
+
+- Expose `POST /api/contracts/{id}/unblocking` with a required reason.
+- Permit only `BLOCKED -> ACTIVE` in the aggregate.
+- Store the reason on the generic status-history transition.
+- Reject every non-`BLOCKED` state rather than treating `ACTIVE` as an
+  idempotent success.
+- Emit `CreditContractUnblocked` atomically through the outbox.
+- Route the event through `credit-contract.unblocked.v1` to the durable local
+  lifecycle-events queue.
+- Preserve request correlation without inventing an inbound event causation ID.
+
+### Acceptance criteria
+
+- Every non-`BLOCKED` state fails with a transition conflict.
+- A successful request records one `BLOCKED -> ACTIVE` history entry with its
+  reason.
+- Invalid or repeated requests do not create history or events.
+- Active state and `CreditContractUnblocked` commit atomically.
 - The event reaches the durable lifecycle-events queue with its correlation ID.
 
 ## Follow-up backlog

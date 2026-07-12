@@ -7,6 +7,7 @@ import br.com.creditcontract.domain.event.CreditContractCreated;
 import br.com.creditcontract.domain.event.CreditContractAccepted;
 import br.com.creditcontract.domain.event.CreditContractActivated;
 import br.com.creditcontract.domain.event.CreditContractBlocked;
+import br.com.creditcontract.domain.event.CreditContractUnblocked;
 import br.com.creditcontract.domain.event.DomainEvent;
 import br.com.creditcontract.domain.event.EventContext;
 import br.com.creditcontract.domain.exception.InvalidContractTransitionException;
@@ -191,6 +192,22 @@ public class CreditContract {
 		}
 		transitionTo(ContractStatus.BLOCKED, normalizedReason);
 		domainEvents.add(CreditContractBlocked.create(
+				id, normalizedReason, updatedAt, correlationId));
+	}
+
+	public void unblock(String reason, UUID correlationId) {
+		requireStatus(ContractStatus.BLOCKED, ContractStatus.ACTIVE);
+		Objects.requireNonNull(reason, "unblocking reason is required");
+		Objects.requireNonNull(correlationId, "correlation id is required");
+		String normalizedReason = reason.trim();
+		if (normalizedReason.isEmpty()) {
+			throw new IllegalArgumentException("unblocking reason cannot be blank");
+		}
+		if (normalizedReason.length() > 255) {
+			throw new IllegalArgumentException("unblocking reason cannot exceed 255 characters");
+		}
+		transitionTo(ContractStatus.ACTIVE, normalizedReason);
+		domainEvents.add(CreditContractUnblocked.create(
 				id, normalizedReason, updatedAt, correlationId));
 	}
 

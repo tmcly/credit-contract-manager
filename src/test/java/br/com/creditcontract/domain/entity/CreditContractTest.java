@@ -5,6 +5,7 @@ import br.com.creditcontract.domain.event.CreditContractCreated;
 import br.com.creditcontract.domain.event.CreditContractAccepted;
 import br.com.creditcontract.domain.event.CreditContractActivated;
 import br.com.creditcontract.domain.event.CreditContractBlocked;
+import br.com.creditcontract.domain.event.CreditContractUnblocked;
 import br.com.creditcontract.domain.event.CreditAnalysisApproved;
 import br.com.creditcontract.domain.event.CreditAnalysisRejected;
 import br.com.creditcontract.domain.event.EventContext;
@@ -222,6 +223,45 @@ class CreditContractTest {
 				() -> contract.block("   ", UUID.randomUUID()));
 		assertThrows(IllegalArgumentException.class,
 				() -> contract.block("x".repeat(256), UUID.randomUUID()));
+	}
+
+	@Test
+	void shouldUnblockOnlyBlockedContractAndRecordReasonAndEvent() {
+		CreditContract contract = activeContract();
+		contract.block("Payment overdue", UUID.randomUUID());
+		UUID correlationId = UUID.randomUUID();
+
+		contract.unblock("  Outstanding balance settled  ", correlationId);
+
+		assertEquals(ContractStatus.ACTIVE, contract.getStatus());
+		assertEquals(ContractStatus.BLOCKED,
+				contract.getStatusHistory().getLast().previousStatus());
+		assertEquals(ContractStatus.ACTIVE,
+				contract.getStatusHistory().getLast().newStatus());
+		assertEquals("Outstanding balance settled",
+				contract.getStatusHistory().getLast().reason());
+		CreditContractUnblocked event = assertInstanceOf(
+				CreditContractUnblocked.class, contract.getDomainEvents().getLast());
+		assertEquals("Outstanding balance settled", event.reason());
+		assertEquals(correlationId, event.correlationId());
+		assertNull(event.causationId());
+	}
+
+	@Test
+	void shouldRejectUnblockingWhenContractIsNotBlocked() {
+		CreditContract contract = activeContract();
+		assertThrows(InvalidContractTransitionException.class,
+				() -> contract.unblock("Manual review completed", UUID.randomUUID()));
+	}
+
+	@Test
+	void shouldRejectInvalidUnblockingReason() {
+		CreditContract contract = activeContract();
+		contract.block("Payment overdue", UUID.randomUUID());
+		assertThrows(IllegalArgumentException.class,
+				() -> contract.unblock("   ", UUID.randomUUID()));
+		assertThrows(IllegalArgumentException.class,
+				() -> contract.unblock("x".repeat(256), UUID.randomUUID()));
 	}
 
 	private CreditContract activeContract() {
