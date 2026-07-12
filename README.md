@@ -86,11 +86,12 @@ src/main/java/br/com/creditcontract/
 - ✅ Query endpoint for eventually consistent contract state
 - ✅ Explicit client acceptance after approval with transactional outbox event
 - ✅ Asynchronous internal activation after acceptance, with inbox and DLQ
+- ✅ Explicit blocking of active contracts with reason, history, and outbox event
 - ✅ Inbox idempotency, bounded messaging retries, DLQ, correlation, and metrics
 - ✅ Flyway schema migration + Testcontainers integration test
 - ✅ Automated unit and PostgreSQL integration tests
 - ✅ Docker: `Dockerfile` (multi-stage) + `docker-compose.yml`
-- ⏳ Block / cancel / reanalyze use cases: not yet implemented
+- ⏳ Cancel / reanalyze use cases: not yet implemented
 
 ## API
 
@@ -135,6 +136,19 @@ curl -X POST http://localhost:8080/api/contracts/{id}/acceptance
 Acceptance emits `CreditContractAccepted`. The response may briefly show
 `ACCEPTED`; this application's asynchronous activation consumer then moves the
 contract to `ACTIVE` and emits the distinct `CreditContractActivated` event.
+
+An external application can then request blocking of an active contract:
+
+```bash
+curl -X POST http://localhost:8080/api/contracts/{id}/blocking \
+  -H "Content-Type: application/json" \
+  -d '{"reason":"Payment overdue for more than 30 days"}'
+
+# { "status": "BLOCKED", "creditLimit": "5000.00", ... }
+```
+
+Only `ACTIVE` contracts can be blocked. The reason is stored on the status
+history transition and `CreditContractBlocked` is emitted through the outbox.
 
 The local credit-analysis stub deterministically rejects CPFs ending in 0 or 1.
 Endings 2 through 9 are approved with limits from R$ 2,500.00 to R$ 15,000.00.
@@ -203,6 +217,12 @@ are routed to `credit-contract.activation.results`; exhausted activation
 failures go to `credit-contract.activation.requests.v2.dlq`. The consumer also
 drains the legacy unversioned queue during migration; inbox idempotency makes
 duplicate delivery across both queues safe.
+
+Blocking records `ACTIVE -> BLOCKED` synchronously and publishes
+`CreditContractBlocked` with routing key `credit-contract.blocked.v1`. The local
+`credit-contract.lifecycle.events` queue demonstrates downstream routing; a
+real microservice can bind its own queue to the same event without coupling to
+the blocking endpoint.
 
 ## Healthcheck
 

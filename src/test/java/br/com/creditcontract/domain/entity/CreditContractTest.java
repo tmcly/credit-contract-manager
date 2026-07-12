@@ -4,6 +4,7 @@ import br.com.creditcontract.domain.enums.ContractStatus;
 import br.com.creditcontract.domain.event.CreditContractCreated;
 import br.com.creditcontract.domain.event.CreditContractAccepted;
 import br.com.creditcontract.domain.event.CreditContractActivated;
+import br.com.creditcontract.domain.event.CreditContractBlocked;
 import br.com.creditcontract.domain.event.CreditAnalysisApproved;
 import br.com.creditcontract.domain.event.CreditAnalysisRejected;
 import br.com.creditcontract.domain.event.EventContext;
@@ -184,6 +185,54 @@ class CreditContractTest {
 		CreditContract contract = sample();
 		assertThrows(InvalidContractTransitionException.class,
 				() -> contract.activate(new EventContext(UUID.randomUUID(), UUID.randomUUID())));
+	}
+
+	@Test
+	void shouldBlockOnlyActiveContractAndRecordReasonAndEvent() {
+		CreditContract contract = activeContract();
+		UUID correlationId = UUID.randomUUID();
+
+		contract.block("  Payment overdue for more than 30 days  ", correlationId);
+
+		assertEquals(ContractStatus.BLOCKED, contract.getStatus());
+		assertEquals(ContractStatus.ACTIVE,
+				contract.getStatusHistory().getLast().previousStatus());
+		assertEquals(ContractStatus.BLOCKED,
+				contract.getStatusHistory().getLast().newStatus());
+		assertEquals("Payment overdue for more than 30 days",
+				contract.getStatusHistory().getLast().reason());
+		CreditContractBlocked event = assertInstanceOf(
+				CreditContractBlocked.class, contract.getDomainEvents().getLast());
+		assertEquals("Payment overdue for more than 30 days", event.reason());
+		assertEquals(correlationId, event.correlationId());
+		assertNull(event.causationId());
+	}
+
+	@Test
+	void shouldRejectBlockingWhenContractIsNotActive() {
+		CreditContract contract = sample();
+		assertThrows(InvalidContractTransitionException.class,
+				() -> contract.block("Collection policy", UUID.randomUUID()));
+	}
+
+	@Test
+	void shouldRejectInvalidBlockingReason() {
+		CreditContract contract = activeContract();
+		assertThrows(IllegalArgumentException.class,
+				() -> contract.block("   ", UUID.randomUUID()));
+		assertThrows(IllegalArgumentException.class,
+				() -> contract.block("x".repeat(256), UUID.randomUUID()));
+	}
+
+	private CreditContract activeContract() {
+		CreditContract contract = sample();
+		contract.startCreditAnalysis();
+		contract.approveCreditAnalysis(
+				MonetaryAmount.reais(new BigDecimal("5000.00")),
+				new EventContext(UUID.randomUUID(), UUID.randomUUID()));
+		contract.accept(UUID.randomUUID());
+		contract.activate(new EventContext(UUID.randomUUID(), UUID.randomUUID()));
+		return contract;
 	}
 
 	@Test

@@ -6,6 +6,7 @@ import br.com.creditcontract.domain.event.CreditAnalysisRejected;
 import br.com.creditcontract.domain.event.CreditContractCreated;
 import br.com.creditcontract.domain.event.CreditContractAccepted;
 import br.com.creditcontract.domain.event.CreditContractActivated;
+import br.com.creditcontract.domain.event.CreditContractBlocked;
 import br.com.creditcontract.domain.event.DomainEvent;
 import br.com.creditcontract.domain.event.EventContext;
 import br.com.creditcontract.domain.exception.InvalidContractTransitionException;
@@ -175,6 +176,22 @@ public class CreditContract {
 		Objects.requireNonNull(context, "event context is required");
 		transitionTo(ContractStatus.ACTIVE, "Contract activated after client acceptance");
 		domainEvents.add(CreditContractActivated.create(id, updatedAt, context));
+	}
+
+	public void block(String reason, UUID correlationId) {
+		requireStatus(ContractStatus.ACTIVE, ContractStatus.BLOCKED);
+		Objects.requireNonNull(reason, "blocking reason is required");
+		Objects.requireNonNull(correlationId, "correlation id is required");
+		String normalizedReason = reason.trim();
+		if (normalizedReason.isEmpty()) {
+			throw new IllegalArgumentException("blocking reason cannot be blank");
+		}
+		if (normalizedReason.length() > 255) {
+			throw new IllegalArgumentException("blocking reason cannot exceed 255 characters");
+		}
+		transitionTo(ContractStatus.BLOCKED, normalizedReason);
+		domainEvents.add(CreditContractBlocked.create(
+				id, normalizedReason, updatedAt, correlationId));
 	}
 
 	public boolean hasCreditAnalysisFinished() {

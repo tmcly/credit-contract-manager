@@ -7,6 +7,7 @@ import br.com.creditcontract.domain.entity.CreditContract;
 import br.com.creditcontract.domain.enums.ContractStatus;
 import br.com.creditcontract.domain.event.CreditContractCreated;
 import br.com.creditcontract.domain.event.CreditContractAccepted;
+import br.com.creditcontract.domain.event.CreditContractBlocked;
 import br.com.creditcontract.domain.valueobject.Address;
 import br.com.creditcontract.domain.valueobject.Client;
 import br.com.creditcontract.domain.valueobject.ContractId;
@@ -161,5 +162,46 @@ class CreditContractPersistenceAdapterTest {
 		assertNull(outbox.get("causation_id"));
 		assertTrue(outbox.get("payload").toString()
 				.contains("\"contractId\": \"" + id.value() + "\""));
+	}
+
+	@Test
+	@Transactional(propagation = Propagation.NOT_SUPPORTED)
+	void shouldPersistBlockingReasonAndItsOutboxEventAtomically() {
+		ContractId id = ContractId.generate();
+		LocalDateTime now = LocalDateTime.now();
+		CreditContract contract = CreditContract.rehydrate(
+				id,
+				"CT-2026-000502",
+				new Client(
+						DocumentNumber.from("52998224725"),
+						"Maria Silva",
+						new Address("PR", "Curitiba", "Rua das Flores", "123",
+								new ZipCode("80010-000"))),
+				ContractStatus.ACTIVE,
+				MonetaryAmount.reais(new BigDecimal("5000.00")),
+				now,
+				now,
+				4L,
+				List.of());
+		repository.save(contract);
+
+		UUID correlationId = UUID.randomUUID();
+		contract.block("Payment overdue for more than 30 days", correlationId);
+		CreditContractBlocked event =
+				(CreditContractBlocked) contract.getDomainEvents().getFirst();
+		repository.save(contract);
+
+		CreditContract persisted = repository.findById(id).orElseThrow();
+		assertEquals(ContractStatus.BLOCKED, persisted.getStatus());
+		assertEquals("Payment overdue for more than 30 days",
+				persisted.getStatusHistory().getLast().reason());
+
+		Map<String, Object> outbox = jdbcTemplate.queryForMap(
+				"SELECT * FROM outbox_events WHERE event_id = ?", event.eventId());
+		assertEquals("CreditContractBlocked", outbox.get("event_type"));
+		assertEquals(correlationId, outbox.get("correlation_id"));
+		assertNull(outbox.get("causation_id"));
+		assertTrue(outbox.get("payload").toString()
+				.contains("\"reason\": \"Payment overdue for more than 30 days\""));
 	}
 }
