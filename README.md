@@ -46,11 +46,14 @@ The current implementation includes:
 - synchronous unblocking requests restricted to blocked contracts;
 - manual cancellation with different client and legal rules;
 - automatic cancellation after a configurable 90-day blocked period;
+- asynchronous credit reanalysis for active contracts with a configurable
+  30-day cooldown and durable request audit;
+- deterministic reanalysis outcomes with explicit previous and resulting limits;
 - transactional outbox and inbox-based idempotency;
 - bounded retries, dead-letter queues, correlation IDs, metrics, and logs;
 - deterministic local fakes and PostgreSQL/RabbitMQ integration tests.
 
-Reanalysis and authentication are not implemented yet.
+Authentication is not implemented yet.
 
 ## Contract lifecycle
 
@@ -66,12 +69,16 @@ stateDiagram-v2
     BLOCKED --> ACTIVE: external unblocking request
     ACTIVE --> CANCELLED: client or legal request
     BLOCKED --> CANCELLED: legal request or 90-day expiration
+    ACTIVE --> ACTIVE: approved credit reanalysis increases limit
 ```
 
 Every transition is validated by the `CreditContract` aggregate and appended
 to `contract_status_history`. Transition-specific reasons, such as rejection or
 blocking or unblocking, belong to the history entry rather than nullable
 columns on the contract.
+
+Credit reanalysis is audited separately because it changes the approved limit,
+not the lifecycle status; the contract remains `ACTIVE` while it is assessed.
 
 ## Architecture
 
@@ -249,6 +256,34 @@ for 90 days. The duration is the configurable business policy
 `credit-contract.cancellation.blocked-expiration`; it is not presented as a
 universal statutory deadline.
 
+### 7. Request credit reanalysis
+
+```bash
+curl -i -X POST http://localhost:8080/api/contracts/{id}/credit-reanalysis
+```
+
+Only an `ACTIVE` contract accepts reanalysis. The API returns `202 Accepted`
+because the provider runs asynchronously, and the contract remains active with
+its current limit during processing.
+
+```json
+{
+  "requestId": "c9574f50-72f5-4a08-9efd-44ad0f708ea8",
+  "contractId": "4c9a18f2-72ef-4b80-b676-8a1679b60da0",
+  "status": "REQUESTED",
+  "requestedAt": "2026-07-12T15:30:00",
+  "nextEligibleAt": "2026-08-11T15:30:00"
+}
+```
+
+Every accepted request starts the configurable 30-day cooldown, including an
+eventually rejected assessment. Requests inside the interval return `429 Too
+Many Requests` with `nextEligibleAt`.
+
+The local deterministic provider rejects valid CPFs ending in `0` or `1`.
+Endings `2-4`, `5-7`, and `8-9` multiply the current limit by `1.5`, `2`, and
+`3`, respectively, capped at R$ 100,000. These bands are demonstration policy.
+
 ### Endpoint summary
 
 | Method | Path | Purpose |
@@ -259,6 +294,7 @@ universal statutory deadline.
 | `POST` | `/api/contracts/{id}/blocking` | Block an active contract with a reason |
 | `POST` | `/api/contracts/{id}/unblocking` | Return a blocked contract to active status |
 | `POST` | `/api/contracts/{id}/cancellation` | Cancel by client or legal request |
+| `POST` | `/api/contracts/{id}/credit-reanalysis` | Request asynchronous limit reanalysis for an active contract |
 | `GET` | `/health` | Lightweight application health check |
 | `GET` | `/actuator/health` | Detailed infrastructure health |
 
@@ -282,6 +318,9 @@ RabbitMQ publisher confirmation.
 | `CreditContractBlocked` | `credit-contract.blocked.v1` | `credit-contract.lifecycle.events` |
 | `CreditContractUnblocked` | `credit-contract.unblocked.v1` | `credit-contract.lifecycle.events` |
 | `CreditContractCancelled` | `credit-contract.cancelled.v1` | `credit-contract.lifecycle.events` |
+| `CreditReanalysisRequested` | `credit-reanalysis.requested.v1` | `credit-reanalysis.requests` |
+| `CreditReanalysisApproved` | `credit-reanalysis.approved.v1` | `credit-reanalysis.results` |
+| `CreditReanalysisRejected` | `credit-reanalysis.rejected.v1` | `credit-reanalysis.results` |
 
 Delivery is at least once. Successfully consumed event IDs are stored in the
 PostgreSQL inbox in the same transaction as their business effects. Consumer
@@ -358,6 +397,6 @@ The repository keeps implementation context close to the code:
   follow-up backlog;
 - [Agent guide](AGENTS.md) defines repository conventions and verification.
 
-The next candidate capabilities are reanalysis, richer read APIs,
-optimistic-lock conflict handling, CI, and API security. The roadmap remains the
+The next candidate capabilities are richer read APIs, optimistic-lock conflict
+handling, CI, and API security. The roadmap remains the
 source of truth for sequencing them.

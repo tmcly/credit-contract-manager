@@ -2,6 +2,7 @@ package br.com.creditcontract.adapter.out.persistence.jpa;
 
 import br.com.creditcontract.domain.entity.ContractStatusHistory;
 import br.com.creditcontract.domain.entity.CreditContract;
+import br.com.creditcontract.domain.entity.CreditReanalysis;
 import br.com.creditcontract.domain.valueobject.Address;
 import br.com.creditcontract.domain.valueobject.Client;
 import br.com.creditcontract.domain.valueobject.ContractId;
@@ -35,6 +36,9 @@ public class CreditContractPersistenceMapper {
 		contract.getStatusHistory().stream()
 				.map(this::toJpaEntity)
 				.forEach(entity::addStatusHistory);
+		contract.getCreditReanalyses().stream()
+				.map(this::toJpaEntity)
+				.forEach(entity::addCreditReanalysis);
 		return entity;
 	}
 
@@ -44,6 +48,14 @@ public class CreditContractPersistenceMapper {
 				.filter(history -> !entity.hasStatusHistory(history.id()))
 				.map(this::toJpaEntity)
 				.forEach(entity::addStatusHistory);
+		contract.getCreditReanalyses().forEach(reanalysis -> {
+			CreditReanalysisJpaEntity existing = entity.findCreditReanalysis(reanalysis.getId());
+			if (existing == null) {
+				entity.addCreditReanalysis(toJpaEntity(reanalysis));
+			} else {
+				existing.updateFrom(reanalysis);
+			}
+		});
 	}
 
 	CreditContract toDomain(CreditContractJpaEntity entity) {
@@ -69,7 +81,33 @@ public class CreditContractPersistenceMapper {
 				entity.getVersion(),
 				entity.getStatusHistory().stream()
 						.map(this::toDomain)
+						.toList(),
+				entity.getCreditReanalyses().stream()
+						.map(this::toDomain)
 						.toList());
+	}
+
+	private CreditReanalysisJpaEntity toJpaEntity(CreditReanalysis reanalysis) {
+		return new CreditReanalysisJpaEntity(
+				reanalysis.getId(),
+				reanalysis.getStatus(),
+				reanalysis.getPreviousLimit().amount(),
+				reanalysis.getNewLimit() == null ? null : reanalysis.getNewLimit().amount(),
+				reanalysis.getReason(),
+				reanalysis.getRequestedAt(),
+				reanalysis.getCompletedAt());
+	}
+
+	private CreditReanalysis toDomain(CreditReanalysisJpaEntity reanalysis) {
+		return CreditReanalysis.rehydrate(
+				reanalysis.getId(),
+				MonetaryAmount.reais(reanalysis.getPreviousLimit()),
+				reanalysis.getRequestedAt(),
+				reanalysis.getStatus(),
+				reanalysis.getNewLimit() == null
+						? null : MonetaryAmount.reais(reanalysis.getNewLimit()),
+				reanalysis.getReason(),
+				reanalysis.getCompletedAt());
 	}
 
 	private ContractStatusHistoryJpaEntity toJpaEntity(ContractStatusHistory history) {

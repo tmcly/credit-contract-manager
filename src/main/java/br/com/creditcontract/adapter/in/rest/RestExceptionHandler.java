@@ -4,6 +4,8 @@ import br.com.creditcontract.application.exception.ClientNotFoundException;
 import br.com.creditcontract.application.exception.CreditContractNotFoundException;
 import br.com.creditcontract.domain.exception.InvalidDocumentNumberException;
 import br.com.creditcontract.domain.exception.InvalidContractTransitionException;
+import br.com.creditcontract.domain.exception.CreditReanalysisCooldownException;
+import br.com.creditcontract.domain.exception.CreditReanalysisNotAllowedException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -65,6 +67,25 @@ public class RestExceptionHandler {
 				HttpStatus.CONFLICT, exception.getMessage());
 		problem.setTitle("Invalid contract transition");
 		problem.setType(URI.create("/errors/invalid-contract-transition"));
+		return problem;
+	}
+
+	@ExceptionHandler(CreditReanalysisNotAllowedException.class)
+	ProblemDetail handleCreditReanalysisNotAllowed(CreditReanalysisNotAllowedException exception) {
+		ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+				HttpStatus.CONFLICT, exception.getMessage());
+		problem.setTitle("Credit reanalysis not allowed");
+		problem.setType(URI.create("/errors/credit-reanalysis-not-allowed"));
+		return problem;
+	}
+
+	@ExceptionHandler(CreditReanalysisCooldownException.class)
+	ProblemDetail handleCreditReanalysisCooldown(CreditReanalysisCooldownException exception) {
+		ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+				HttpStatus.TOO_MANY_REQUESTS, exception.getMessage());
+		problem.setTitle("Credit reanalysis cooldown active");
+		problem.setType(URI.create("/errors/credit-reanalysis-cooldown"));
+		problem.setProperty("nextEligibleAt", exception.getNextEligibleAt());
 		return problem;
 	}
 }

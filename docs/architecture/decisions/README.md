@@ -19,6 +19,7 @@ of choices that should survive individual tasks and conversations.
 | [012](012-synchronous-contract-blocking-command.md) | Accepted, implemented | Block active contracts through a synchronous command and emit the resulting fact |
 | [013](013-synchronous-contract-unblocking-command.md) | Accepted, implemented | Unblock blocked contracts through a synchronous command and emit the resulting fact |
 | [014](014-manual-and-expiring-contract-cancellation.md) | Accepted, implemented | Cancel manually by requester rules or automatically after 90 blocked days |
+| [015](015-asynchronous-credit-reanalysis.md) | Accepted, implemented | Request active-contract credit reanalysis asynchronously with cooldown and audit |
 
 When a decision changes, add a new ADR that supersedes the old one. Do not
 rewrite history in a way that hides why the earlier decision was made.

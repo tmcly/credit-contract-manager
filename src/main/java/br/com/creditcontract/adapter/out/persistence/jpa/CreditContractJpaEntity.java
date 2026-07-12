@@ -72,6 +72,10 @@ public class CreditContractJpaEntity {
 	@OrderBy("changedAt ASC")
 	private List<ContractStatusHistoryJpaEntity> statusHistory = new ArrayList<>();
 
+	@OneToMany(mappedBy = "contract", cascade = CascadeType.ALL, orphanRemoval = true)
+	@OrderBy("requestedAt ASC")
+	private List<CreditReanalysisJpaEntity> creditReanalyses = new ArrayList<>();
+
 	protected CreditContractJpaEntity() {
 	}
 
@@ -108,6 +112,11 @@ public class CreditContractJpaEntity {
 		statusHistory.add(history);
 	}
 
+	void addCreditReanalysis(CreditReanalysisJpaEntity reanalysis) {
+		reanalysis.attachTo(this);
+		creditReanalyses.add(reanalysis);
+	}
+
 	void updateFrom(CreditContract contract) {
 		this.status = contract.getStatus();
 		this.creditLimit = contract.getCreditLimit() == null
@@ -118,6 +127,13 @@ public class CreditContractJpaEntity {
 
 	boolean hasStatusHistory(UUID historyId) {
 		return statusHistory.stream().anyMatch(history -> history.getId().equals(historyId));
+	}
+
+	CreditReanalysisJpaEntity findCreditReanalysis(UUID reanalysisId) {
+		return creditReanalyses.stream()
+				.filter(reanalysis -> reanalysis.getId().equals(reanalysisId))
+				.findFirst()
+				.orElse(null);
 	}
 
 	public UUID getId() { return id; }
@@ -136,5 +152,8 @@ public class CreditContractJpaEntity {
 	public Long getVersion() { return version; }
 	public List<ContractStatusHistoryJpaEntity> getStatusHistory() {
 		return Collections.unmodifiableList(statusHistory);
+	}
+	public List<CreditReanalysisJpaEntity> getCreditReanalyses() {
+		return Collections.unmodifiableList(creditReanalyses);
 	}
 }

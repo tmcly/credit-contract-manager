@@ -8,6 +8,9 @@ import br.com.creditcontract.domain.event.CreditContractUnblocked;
 import br.com.creditcontract.domain.event.CreditContractCancelled;
 import br.com.creditcontract.domain.event.CreditAnalysisApproved;
 import br.com.creditcontract.domain.event.CreditAnalysisRejected;
+import br.com.creditcontract.domain.event.CreditReanalysisRequested;
+import br.com.creditcontract.domain.event.CreditReanalysisApproved;
+import br.com.creditcontract.domain.event.CreditReanalysisRejected;
 import br.com.creditcontract.domain.event.DomainEvent;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -35,6 +38,26 @@ public class OutboxEventSerializer {
 		}
 		if (event instanceof CreditAnalysisRejected rejected) {
 			return serialize(rejected);
+		}
+		if (event instanceof CreditReanalysisRequested requested) {
+			ObjectNode payload = commonPayload(requested);
+			payload.put("currentLimit", requested.currentLimit().amount().toPlainString());
+			return write(requested, payload);
+		}
+		if (event instanceof CreditReanalysisApproved approved) {
+			ObjectNode payload = commonPayload(approved);
+			payload.put("reanalysisId", approved.reanalysisId().toString());
+			payload.put("previousLimit", approved.previousLimit().amount().toPlainString());
+			payload.put("newLimit", approved.newLimit().amount().toPlainString());
+			return write(approved, payload);
+		}
+		if (event instanceof CreditReanalysisRejected rejected) {
+			ObjectNode payload = commonPayload(rejected);
+			payload.put("reanalysisId", rejected.reanalysisId().toString());
+			payload.put("previousLimit", rejected.previousLimit().amount().toPlainString());
+			payload.put("retainedLimit", rejected.retainedLimit().amount().toPlainString());
+			payload.put("reason", rejected.reason());
+			return write(rejected, payload);
 		}
 		if (event instanceof CreditContractAccepted accepted) {
 			return write(accepted, commonPayload(accepted));

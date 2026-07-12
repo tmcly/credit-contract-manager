@@ -11,6 +11,9 @@ import br.com.creditcontract.domain.event.CreditContractActivated;
 import br.com.creditcontract.domain.event.CreditContractBlocked;
 import br.com.creditcontract.domain.event.CreditContractUnblocked;
 import br.com.creditcontract.domain.event.CreditContractCancelled;
+import br.com.creditcontract.domain.event.CreditReanalysisRequested;
+import br.com.creditcontract.domain.event.CreditReanalysisApproved;
+import br.com.creditcontract.domain.event.CreditReanalysisRejected;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageBuilder;
 import org.springframework.amqp.core.MessageDeliveryMode;
@@ -74,6 +77,15 @@ public class RabbitMqEventPublisher implements EventPublisher {
 		}
 		if (CreditAnalysisRejected.EVENT_TYPE.equals(event.eventType()) && event.schemaVersion() == 1) {
 			return RabbitMqTopology.CREDIT_ANALYSIS_REJECTED_ROUTING_KEY;
+		}
+		if (CreditReanalysisRequested.EVENT_TYPE.equals(event.eventType()) && event.schemaVersion() == 1) {
+			return RabbitMqTopology.CREDIT_REANALYSIS_REQUESTED_ROUTING_KEY;
+		}
+		if (CreditReanalysisApproved.EVENT_TYPE.equals(event.eventType()) && event.schemaVersion() == 1) {
+			return RabbitMqTopology.CREDIT_REANALYSIS_APPROVED_ROUTING_KEY;
+		}
+		if (CreditReanalysisRejected.EVENT_TYPE.equals(event.eventType()) && event.schemaVersion() == 1) {
+			return RabbitMqTopology.CREDIT_REANALYSIS_REJECTED_ROUTING_KEY;
 		}
 		if (CreditContractAccepted.EVENT_TYPE.equals(event.eventType()) && event.schemaVersion() == 1) {
 			return RabbitMqTopology.CREDIT_CONTRACT_ACCEPTED_ROUTING_KEY;
