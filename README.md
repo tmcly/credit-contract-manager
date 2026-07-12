@@ -33,8 +33,8 @@ and production-oriented reliability patterns.
 Credit Contract Manager is a modular backend that owns contract state and its
 business invariants. It is intentionally more than CRUD: creating a contract
 starts an asynchronous credit analysis; approval, client acceptance,
-activation, blocking, and unblocking are distinct business facts with an
-auditable status history.
+activation, blocking, unblocking, and cancellation are distinct business facts
+with an auditable status history.
 
 The current implementation includes:
 
@@ -44,11 +44,13 @@ The current implementation includes:
 - explicit client acceptance followed by internal asynchronous activation;
 - synchronous blocking requests restricted to active contracts;
 - synchronous unblocking requests restricted to blocked contracts;
+- manual cancellation with different client and legal rules;
+- automatic cancellation after a configurable 90-day blocked period;
 - transactional outbox and inbox-based idempotency;
 - bounded retries, dead-letter queues, correlation IDs, metrics, and logs;
 - deterministic local fakes and PostgreSQL/RabbitMQ integration tests.
 
-Cancellation, reanalysis, and authentication are not implemented yet.
+Reanalysis and authentication are not implemented yet.
 
 ## Contract lifecycle
 
@@ -62,6 +64,8 @@ stateDiagram-v2
     ACCEPTED --> ACTIVE: activation consumer
     ACTIVE --> BLOCKED: external blocking request
     BLOCKED --> ACTIVE: external unblocking request
+    ACTIVE --> CANCELLED: client or legal request
+    BLOCKED --> CANCELLED: legal request or 90-day expiration
 ```
 
 Every transition is validated by the `CreditContract` aggregate and appended
@@ -228,6 +232,23 @@ required, limited to 255 characters, and stored on the status-history
 transition. Requests for contracts in any other state return a transition
 conflict and do not emit an event.
 
+### 6. Cancel a contract manually
+
+```bash
+curl -X POST http://localhost:8080/api/contracts/{id}/cancellation \
+  -H "Content-Type: application/json" \
+  -d '{"requestedBy":"CLIENT","reason":"Cancellation requested by the client"}'
+```
+
+`CLIENT` requests are accepted only for `ACTIVE` contracts. `LEGAL` requests
+can cancel either `ACTIVE` or `BLOCKED` contracts. Cancellation ends future
+credit availability but does not represent debt payment or forgiveness.
+
+Blocked contracts are also cancelled automatically when they remain blocked
+for 90 days. The duration is the configurable business policy
+`credit-contract.cancellation.blocked-expiration`; it is not presented as a
+universal statutory deadline.
+
 ### Endpoint summary
 
 | Method | Path | Purpose |
@@ -237,6 +258,7 @@ conflict and do not emit an event.
 | `POST` | `/api/contracts/{id}/acceptance` | Accept an approved credit offer |
 | `POST` | `/api/contracts/{id}/blocking` | Block an active contract with a reason |
 | `POST` | `/api/contracts/{id}/unblocking` | Return a blocked contract to active status |
+| `POST` | `/api/contracts/{id}/cancellation` | Cancel by client or legal request |
 | `GET` | `/health` | Lightweight application health check |
 | `GET` | `/actuator/health` | Detailed infrastructure health |
 
@@ -259,6 +281,7 @@ RabbitMQ publisher confirmation.
 | `CreditContractActivated` | `credit-contract.activated.v1` | `credit-contract.activation.results` |
 | `CreditContractBlocked` | `credit-contract.blocked.v1` | `credit-contract.lifecycle.events` |
 | `CreditContractUnblocked` | `credit-contract.unblocked.v1` | `credit-contract.lifecycle.events` |
+| `CreditContractCancelled` | `credit-contract.cancelled.v1` | `credit-contract.lifecycle.events` |
 
 Delivery is at least once. Successfully consumed event IDs are stored in the
 PostgreSQL inbox in the same transaction as their business effects. Consumer
@@ -335,6 +358,6 @@ The repository keeps implementation context close to the code:
   follow-up backlog;
 - [Agent guide](AGENTS.md) defines repository conventions and verification.
 
-The next candidate capabilities are cancellation, reanalysis, richer read APIs,
+The next candidate capabilities are reanalysis, richer read APIs,
 optimistic-lock conflict handling, CI, and API security. The roadmap remains the
 source of truth for sequencing them.

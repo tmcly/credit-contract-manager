@@ -43,6 +43,8 @@ Already implemented:
   versioned `CreditContractBlocked` outbox event.
 - synchronous unblocking of blocked contracts with a required history reason
   and versioned `CreditContractUnblocked` outbox event.
+- requester-aware manual cancellation and automatic cancellation after a
+  configurable 90-day blocked period.
 
 ## Phase 1: Generate contract numbers with PostgreSQL ✅
 
@@ -458,12 +460,38 @@ remains responsible for validating and recording the lifecycle transition.
 - Active state and `CreditContractUnblocked` commit atomically.
 - The event reaches the durable lifecycle-events queue with its correlation ID.
 
+## Phase 11: Cancel contracts manually or after blocked expiration ✅
+
+Status: completed.
+
+Implementation note: ADR 014 records the requester-specific rules and treats 90
+days as configurable business policy rather than a universal legal deadline.
+
+Suggested branch: `feat/cancel-credit-contracts`.
+
+### Goal
+
+Cancel contracts through authorized manual commands or after a blocked client
+does not regularize within the configured period.
+
+### Scope and acceptance criteria
+
+- Client requests permit only `ACTIVE -> CANCELLED`.
+- Legal requests permit `ACTIVE` or `BLOCKED -> CANCELLED`.
+- A bounded scheduler applies `BLOCKED -> CANCELLED` after 90 days by default.
+- A partial PostgreSQL index supports the blocked-expiration scan.
+- Invalid states produce no history or event.
+- Every success records its reason and atomically stores
+  `CreditContractCancelled` with the correct origin.
+- Cancelled events reach the durable lifecycle-events queue.
+- README, architecture, ADRs, and configuration describe the policy.
+
 ## Follow-up backlog
 
 These items are valuable but should not interrupt the ordered phases above
 unless a concrete requirement changes priority:
 
-- explicit cancel and reanalyze use cases;
+- explicit reanalysis use case;
 - read endpoints and pagination;
 - optimistic-lock conflict handling;
 - GitHub Actions CI with unit and integration tests;

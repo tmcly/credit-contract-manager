@@ -1,6 +1,7 @@
 package br.com.creditcontract.domain.entity;
 
 import br.com.creditcontract.domain.enums.ContractStatus;
+import br.com.creditcontract.domain.enums.CancellationOrigin;
 import br.com.creditcontract.domain.event.CreditAnalysisApproved;
 import br.com.creditcontract.domain.event.CreditAnalysisRejected;
 import br.com.creditcontract.domain.event.CreditContractCreated;
@@ -8,6 +9,7 @@ import br.com.creditcontract.domain.event.CreditContractAccepted;
 import br.com.creditcontract.domain.event.CreditContractActivated;
 import br.com.creditcontract.domain.event.CreditContractBlocked;
 import br.com.creditcontract.domain.event.CreditContractUnblocked;
+import br.com.creditcontract.domain.event.CreditContractCancelled;
 import br.com.creditcontract.domain.event.DomainEvent;
 import br.com.creditcontract.domain.event.EventContext;
 import br.com.creditcontract.domain.exception.InvalidContractTransitionException;
@@ -209,6 +211,39 @@ public class CreditContract {
 		transitionTo(ContractStatus.ACTIVE, normalizedReason);
 		domainEvents.add(CreditContractUnblocked.create(
 				id, normalizedReason, updatedAt, correlationId));
+	}
+
+	public void cancelByClient(String reason, UUID correlationId) {
+		requireStatus(ContractStatus.ACTIVE, ContractStatus.CANCELLED);
+		cancel(CancellationOrigin.CLIENT_REQUEST, reason, correlationId);
+	}
+
+	public void cancelForLegalReason(String reason, UUID correlationId) {
+		if (status != ContractStatus.ACTIVE && status != ContractStatus.BLOCKED) {
+			throw new InvalidContractTransitionException(status, ContractStatus.CANCELLED);
+		}
+		cancel(CancellationOrigin.LEGAL_REQUEST, reason, correlationId);
+	}
+
+	public void cancelAfterBlockedExpiration(String reason, UUID correlationId) {
+		requireStatus(ContractStatus.BLOCKED, ContractStatus.CANCELLED);
+		cancel(CancellationOrigin.BLOCKED_EXPIRATION, reason, correlationId);
+	}
+
+	private void cancel(CancellationOrigin origin, String reason, UUID correlationId) {
+		Objects.requireNonNull(reason, "cancellation reason is required");
+		Objects.requireNonNull(correlationId, "correlation id is required");
+		String normalizedReason = reason.trim();
+		if (normalizedReason.isEmpty()) {
+			throw new IllegalArgumentException("cancellation reason cannot be blank");
+		}
+		if (normalizedReason.length() > 255) {
+			throw new IllegalArgumentException("cancellation reason cannot exceed 255 characters");
+		}
+		ContractStatus previousStatus = status;
+		transitionTo(ContractStatus.CANCELLED, normalizedReason);
+		domainEvents.add(CreditContractCancelled.create(
+				id, previousStatus, origin, normalizedReason, updatedAt, correlationId));
 	}
 
 	public boolean hasCreditAnalysisFinished() {

@@ -27,6 +27,7 @@ public final class RabbitMqTopology {
 	public static final String CREDIT_CONTRACT_ACTIVATED_ROUTING_KEY = "credit-contract.activated.v1";
 	public static final String CREDIT_CONTRACT_BLOCKED_ROUTING_KEY = "credit-contract.blocked.v1";
 	public static final String CREDIT_CONTRACT_UNBLOCKED_ROUTING_KEY = "credit-contract.unblocked.v1";
+	public static final String CREDIT_CONTRACT_CANCELLED_ROUTING_KEY = "credit-contract.cancelled.v1";
 
 	private RabbitMqTopology() {
 	}

@@ -206,6 +206,33 @@ class RabbitMqOutboxIntegrationTest {
 		assertTrue(payload.contains("Balance settled"));
 	}
 
+	@Test
+	void shouldRouteCancelledContractToLifecycleEventsQueue() {
+		LocalDateTime now = LocalDateTime.now();
+		CreditContract contract = CreditContract.rehydrate(
+				ContractId.generate(), "CT-2026-000105",
+				new Client(DocumentNumber.from("52998224725"), "Maria Silva",
+						new Address("PR", "Curitiba", "Rua das Flores", "123", new ZipCode("80010-000"))),
+				ContractStatus.ACTIVE, MonetaryAmount.reais(new BigDecimal("5000.00")),
+				now, now, 6L, List.of());
+		repository.save(contract);
+		UUID correlationId = UUID.randomUUID();
+		contract.cancelForLegalReason("Court order", correlationId);
+		repository.save(contract);
+
+		relay.publishPending();
+
+		Message message = rabbitTemplate.receive(
+				RabbitMqTopology.CREDIT_CONTRACT_LIFECYCLE_EVENTS_QUEUE,
+				Duration.ofSeconds(10).toMillis());
+		assertNotNull(message);
+		assertEquals("CreditContractCancelled", message.getMessageProperties().getType());
+		assertEquals(correlationId.toString(), message.getMessageProperties().getCorrelationId());
+		String payload = new String(message.getBody(), StandardCharsets.UTF_8);
+		assertTrue(payload.contains("LEGAL_REQUEST"));
+		assertTrue(payload.contains("Court order"));
+	}
+
 	private CreditContract sampleContract() {
 		return CreditContract.create(
 				ContractId.generate(),

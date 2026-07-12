@@ -93,6 +93,8 @@ stateDiagram-v2
     ACCEPTED --> ACTIVE: activation consumer
     ACTIVE --> BLOCKED: block(reason)
     BLOCKED --> ACTIVE: unblock(reason)
+    ACTIVE --> CANCELLED: client or legal request
+    BLOCKED --> CANCELLED: legal request or expiration
 ```
 
 ## Persistence boundary
@@ -236,6 +238,14 @@ routed with `credit-contract.unblocked.v1` to the lifecycle-events queue. An
 `ACTIVE` contract is not treated as an idempotent unblocking success because it
 may never have been blocked; every successful request therefore represents a
 real transition from `BLOCKED`.
+
+Manual cancellation enters through REST. Client requests permit only
+`ACTIVE -> CANCELLED`, while legal requests permit both `ACTIVE -> CANCELLED`
+and `BLOCKED -> CANCELLED`. A scheduled inbound adapter also queries blocked
+contracts whose `updatedAt` is at or before the configured cutoff and applies
+`BLOCKED -> CANCELLED` in bounded batches. The default cutoff is 90 days after
+blocking and remains configuration, not a hard-coded legal claim. Every path
+emits `CreditContractCancelled` with its origin through the outbox.
 
 ## Transactional outbox
 
