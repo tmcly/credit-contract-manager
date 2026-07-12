@@ -13,6 +13,21 @@ import java.util.UUID;
 
 public interface CreditContractJpaRepository extends JpaRepository<CreditContractJpaEntity, UUID> {
 
+	@Query("""
+			select new br.com.creditcontract.adapter.out.persistence.jpa.CreditContractSummaryJpaProjection(
+				contract.id, contract.contractNumber, contract.clientName, contract.status,
+				contract.creditLimit, contract.createdAt, contract.updatedAt, contract.version)
+			from CreditContractJpaEntity contract
+			where (:status is null or contract.status = :status)
+			  and (:documentNumber is null or contract.clientDocumentNumber = :documentNumber)
+			  and (:contractNumber is null or contract.contractNumber = :contractNumber)
+			""")
+	org.springframework.data.domain.Page<CreditContractSummaryJpaProjection> search(
+			ContractStatus status,
+			String documentNumber,
+			String contractNumber,
+			Pageable pageable);
+
 	@EntityGraph(attributePaths = "statusHistory")
 	@Query("select contract from CreditContractJpaEntity contract where contract.id = :id")
 	Optional<CreditContractJpaEntity> findDetailedById(UUID id);

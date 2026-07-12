@@ -5,7 +5,7 @@
 Credit Contract Manager models the lifecycle of Brazilian personal credit
 contracts. The codebase is intentionally evolving as a modular backend with
 DDD-inspired boundaries, explicit application ports, relational persistence,
-and a planned event-driven workflow.
+and an event-driven workflow.
 
 The architecture is designed to make business rules visible while keeping
 framework and integration details replaceable.
@@ -18,8 +18,11 @@ flowchart LR
     CONSUMER["RabbitMQ consumer"] --> APP
     APP --> DOMAIN["Domain model"]
     APP --> PORTS["Application output ports"]
+    APP --> READPORT["Contract query port"]
     STUBS["Local service adapters"] -. implement .-> PORTS
     PERSISTENCE["JPA persistence adapter"] -. implement .-> PORTS
+    READMODEL["JPA read projection adapter"] -. implement .-> READPORT
+    READMODEL --> PG
     PERSISTENCE --> PG[("PostgreSQL")]
     OUTBOX["Outbox persistence adapter"] --> PG
     PERSISTENCE --> OUTBOX
@@ -45,6 +48,7 @@ br.com.creditcontract
 │   └── valueobject
 ├── application
 │   ├── exception
+│   ├── query
 │   ├── port/out
 │   └── usecase
 └── adapter
@@ -119,6 +123,13 @@ concerns from leaking into the domain.
 The mapper supports both writes and deliberate JPA-to-domain rehydration,
 including status history and optimistic version.
 
+Collection reads use a separate `CreditContractQueryPort`. Its JPA adapter
+selects lightweight summary or audit projections and applies filters,
+pagination, and stable ordering in PostgreSQL. This avoids rehydrating the
+aggregate and its growing child collections merely to render a list. It is a
+read-side optimization inside the same application and database, not a
+separate CQRS store.
+
 Flyway owns schema evolution. Hibernate is configured to validate rather than
 create the schema. PostgreSQL constraints reinforce document shape, supported
 statuses, non-negative monetary values, uniqueness, and referential integrity.
@@ -189,6 +200,28 @@ erDiagram
 
 The status history is the audit trail for lifecycle transitions. The initial
 entry is `null -> DRAFT`; later transitions carry one optional business reason.
+
+## Read API flow
+
+```mermaid
+flowchart LR
+    CLIENT["API client"] --> REST["ContractReadController"]
+    REST --> USECASE["Read use cases"]
+    USECASE --> PORT["CreditContractQueryPort"]
+    PORT --> ADAPTER["JPA projection adapter"]
+    ADAPTER --> DB[("PostgreSQL")]
+```
+
+`GET /api/contracts` returns a stable API-owned page envelope and supports
+exact status, CPF, and contract-number filters. CPF is normalized and used only
+as a predicate; it is not returned by the collection endpoint. Sorting is
+restricted to indexed `createdAt` or `updatedAt` fields and always adds an ID
+tie-breaker. Page size is limited to 100.
+
+`GET /api/contracts/{id}/history` and
+`GET /api/contracts/{id}/credit-reanalyses` expose the two audit streams
+independently, newest first. They first distinguish a missing contract from an
+existing contract with an empty audit collection.
 
 ## Current contract and analysis flow
 

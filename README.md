@@ -49,6 +49,7 @@ The current implementation includes:
 - asynchronous credit reanalysis for active contracts with a configurable
   30-day cooldown and durable request audit;
 - deterministic reanalysis outcomes with explicit previous and resulting limits;
+- paginated contract search plus status-transition and credit-reanalysis audit APIs;
 - transactional outbox and inbox-based idempotency;
 - bounded retries, dead-letter queues, correlation IDs, metrics, and logs;
 - deterministic local fakes and PostgreSQL/RabbitMQ integration tests.
@@ -284,12 +285,33 @@ The local deterministic provider rejects valid CPFs ending in `0` or `1`.
 Endings `2-4`, `5-7`, and `8-9` multiply the current limit by `1.5`, `2`, and
 `3`, respectively, capped at R$ 100,000. These bands are demonstration policy.
 
+### 8. Query contracts and audit trails
+
+```bash
+curl "http://localhost:8080/api/contracts?status=ACTIVE&page=0&size=20&sort=createdAt&direction=desc"
+curl "http://localhost:8080/api/contracts/{id}/history?page=0&size=20"
+curl "http://localhost:8080/api/contracts/{id}/credit-reanalyses?page=0&size=20"
+```
+
+Contract search supports optional exact-match `status`, `documentNumber`, and
+`contractNumber` filters. Pages are zero-based, default to 20 items, and accept
+at most 100. The supported sort fields are `createdAt` and `updatedAt`, with
+`asc` or `desc`; an ID tie-breaker keeps ordering stable between pages.
+
+The list is a deliberately small projection. It does not load status history,
+reanalyses, events, or the client address, and it never returns the CPF used as
+a filter. Both audit endpoints return newest entries first. A missing contract
+returns `404`, including when its audit collection would otherwise be empty.
+
 ### Endpoint summary
 
 | Method | Path | Purpose |
 | --- | --- | --- |
 | `POST` | `/api/contracts` | Create a contract and request analysis asynchronously |
+| `GET` | `/api/contracts` | Search contract summaries with filters and pagination |
 | `GET` | `/api/contracts/{id}` | Read the current eventually consistent state |
+| `GET` | `/api/contracts/{id}/history` | Read paginated lifecycle transition history |
+| `GET` | `/api/contracts/{id}/credit-reanalyses` | Read paginated credit-reanalysis audit |
 | `POST` | `/api/contracts/{id}/acceptance` | Accept an approved credit offer |
 | `POST` | `/api/contracts/{id}/blocking` | Block an active contract with a reason |
 | `POST` | `/api/contracts/{id}/unblocking` | Return a blocked contract to active status |
@@ -397,6 +419,6 @@ The repository keeps implementation context close to the code:
   follow-up backlog;
 - [Agent guide](AGENTS.md) defines repository conventions and verification.
 
-The next candidate capabilities are richer read APIs, optimistic-lock conflict
-handling, CI, and API security. The roadmap remains the
+The next candidate capabilities are optimistic-lock conflict handling, CI, API
+security, and richer OpenAPI examples. The roadmap remains the
 source of truth for sequencing them.

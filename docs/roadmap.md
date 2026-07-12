@@ -48,6 +48,8 @@ Already implemented:
 - client-requested asynchronous credit reanalysis for active contracts, with a
   configurable 30-day cooldown, deterministic local outcomes, durable audit,
   inbox idempotency, and before/after limit events.
+- paginated contract search and independently paginated status and reanalysis
+  audit APIs backed by lightweight read projections.
 
 ## Phase 1: Generate contract numbers with PostgreSQL ✅
 
@@ -521,12 +523,43 @@ collapsing an active contract into the initial-analysis lifecycle.
 - README, architecture, ADRs, migration, tests, and event topology describe the
   implemented behavior.
 
+## Phase 13: Add paginated contract and audit reads ✅
+
+Status: completed.
+
+Implementation note: ADR 016 introduces a dedicated application query port and
+lightweight JPA projections in the existing PostgreSQL database. This is a
+bounded read-side optimization, not a second CQRS store.
+
+Suggested branch: `feat/add-contract-read-apis`.
+
+### Goal
+
+Let operators and future client-facing applications find contracts and inspect
+their lifecycle and limit-change audits without loading unbounded aggregates.
+
+### Scope and acceptance criteria
+
+- `GET /api/contracts` returns a stable paginated summary envelope.
+- Optional exact filters support status, normalized CPF, and contract number.
+- CPF can select a contract but is not exposed in collection responses.
+- Page size defaults to 20, is capped at 100, and rejects invalid values.
+- Sorting supports indexed `createdAt` or `updatedAt` in either direction and
+  uses ID as a deterministic tie-breaker.
+- `GET /api/contracts/{id}/history` returns status changes newest first.
+- `GET /api/contracts/{id}/credit-reanalyses` returns reanalysis requests and
+  outcomes newest first.
+- Missing contracts return `404`; existing contracts can return empty pages.
+- Read queries use projections and database pagination rather than aggregate
+  rehydration.
+- Flyway indexes, PostgreSQL integration tests, controller tests, README,
+  architecture, ADRs, and this roadmap describe the implemented behavior.
+
 ## Follow-up backlog
 
 These items are valuable but should not interrupt the ordered phases above
 unless a concrete requirement changes priority:
 
-- read endpoints and pagination;
 - optimistic-lock conflict handling;
 - GitHub Actions CI with unit and integration tests;
 - API authentication and authorization;
