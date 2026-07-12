@@ -5,6 +5,8 @@ import br.com.creditcontract.application.port.out.CreditContractRepository;
 import br.com.creditcontract.domain.entity.CreditContract;
 import br.com.creditcontract.domain.event.DomainEvent;
 import br.com.creditcontract.domain.valueobject.ContractId;
+import br.com.creditcontract.domain.enums.ContractStatus;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -13,6 +15,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.time.LocalDateTime;
 
 @Repository
 public class CreditContractPersistenceAdapter implements CreditContractRepository {
@@ -50,6 +53,21 @@ public class CreditContractPersistenceAdapter implements CreditContractRepositor
 	@Transactional(readOnly = true)
 	public Optional<CreditContract> findById(ContractId contractId) {
 		return repository.findDetailedById(contractId.value()).map(mapper::toDomain);
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public List<CreditContract> findBlockedUpdatedBefore(LocalDateTime cutoff, int limit) {
+		if (limit <= 0) {
+			throw new IllegalArgumentException("limit must be positive");
+		}
+		return repository.findIdsByStatusUpdatedBefore(
+				ContractStatus.BLOCKED, Objects.requireNonNull(cutoff), PageRequest.of(0, limit))
+				.stream()
+				.map(repository::findDetailedById)
+				.flatMap(Optional::stream)
+				.map(mapper::toDomain)
+				.toList();
 	}
 
 	private void clearPersistedEventsAfterCommit(

@@ -5,6 +5,7 @@ import br.com.creditcontract.domain.event.CreditContractAccepted;
 import br.com.creditcontract.domain.event.CreditContractActivated;
 import br.com.creditcontract.domain.event.CreditContractBlocked;
 import br.com.creditcontract.domain.event.CreditContractUnblocked;
+import br.com.creditcontract.domain.event.CreditContractCancelled;
 import br.com.creditcontract.domain.event.CreditAnalysisApproved;
 import br.com.creditcontract.domain.event.CreditAnalysisRejected;
 import br.com.creditcontract.domain.event.DomainEvent;
@@ -50,6 +51,13 @@ public class OutboxEventSerializer {
 			ObjectNode payload = commonPayload(unblocked);
 			payload.put("reason", unblocked.reason());
 			return write(unblocked, payload);
+		}
+		if (event instanceof CreditContractCancelled cancelled) {
+			ObjectNode payload = commonPayload(cancelled);
+			payload.put("previousStatus", cancelled.previousStatus().name());
+			payload.put("origin", cancelled.origin().name());
+			payload.put("reason", cancelled.reason());
+			return write(cancelled, payload);
 		}
 		throw new IllegalArgumentException("unsupported domain event: " + event.eventType());
 	}

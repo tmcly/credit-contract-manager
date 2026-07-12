@@ -9,6 +9,7 @@ import br.com.creditcontract.domain.event.CreditContractCreated;
 import br.com.creditcontract.domain.event.CreditContractAccepted;
 import br.com.creditcontract.domain.event.CreditContractBlocked;
 import br.com.creditcontract.domain.event.CreditContractUnblocked;
+import br.com.creditcontract.domain.event.CreditContractCancelled;
 import br.com.creditcontract.domain.valueobject.Address;
 import br.com.creditcontract.domain.valueobject.Client;
 import br.com.creditcontract.domain.valueobject.ContractId;
@@ -247,5 +248,42 @@ class CreditContractPersistenceAdapterTest {
 		assertNull(outbox.get("causation_id"));
 		assertTrue(outbox.get("payload").toString()
 				.contains("\"reason\": \"Outstanding balance settled\""));
+	}
+
+	@Test
+	@Transactional(propagation = Propagation.NOT_SUPPORTED)
+	void shouldFindExpiredBlockedContractsAndPersistCancellationEvent() {
+		LocalDateTime cutoff = LocalDateTime.now().minusDays(90);
+		CreditContract expired = persistedContract(
+				"CT-2026-000703", ContractStatus.BLOCKED, cutoff.minusMinutes(1));
+		CreditContract recent = persistedContract(
+				"CT-2026-000704", ContractStatus.BLOCKED, cutoff.plusMinutes(1));
+		repository.save(expired);
+		repository.save(recent);
+
+		List<CreditContract> found = repository.findBlockedUpdatedBefore(cutoff, 10);
+		assertEquals(List.of(expired.getId()), found.stream().map(CreditContract::getId).toList());
+
+		UUID correlationId = UUID.randomUUID();
+		CreditContract selected = found.getFirst();
+		selected.cancelAfterBlockedExpiration("Regularization period elapsed", correlationId);
+		CreditContractCancelled event =
+				(CreditContractCancelled) selected.getDomainEvents().getFirst();
+		repository.save(selected);
+
+		Map<String, Object> outbox = jdbcTemplate.queryForMap(
+				"SELECT * FROM outbox_events WHERE event_id = ?", event.eventId());
+		assertEquals("CreditContractCancelled", outbox.get("event_type"));
+		assertTrue(outbox.get("payload").toString().contains("BLOCKED_EXPIRATION"));
+		assertEquals(ContractStatus.BLOCKED, repository.findById(recent.getId()).orElseThrow().getStatus());
+	}
+
+	private CreditContract persistedContract(
+			String number, ContractStatus status, LocalDateTime updatedAt) {
+		return CreditContract.rehydrate(ContractId.generate(), number,
+				new Client(DocumentNumber.from("52998224725"), "Maria Silva",
+						new Address("PR", "Curitiba", "Rua das Flores", "123", new ZipCode("80010-000"))),
+				status, MonetaryAmount.reais(new BigDecimal("5000.00")),
+				updatedAt.minusDays(1), updatedAt, 6L, List.of());
 	}
 }

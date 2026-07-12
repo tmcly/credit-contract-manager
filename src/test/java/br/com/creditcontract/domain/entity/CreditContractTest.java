@@ -1,11 +1,13 @@
 package br.com.creditcontract.domain.entity;
 
 import br.com.creditcontract.domain.enums.ContractStatus;
+import br.com.creditcontract.domain.enums.CancellationOrigin;
 import br.com.creditcontract.domain.event.CreditContractCreated;
 import br.com.creditcontract.domain.event.CreditContractAccepted;
 import br.com.creditcontract.domain.event.CreditContractActivated;
 import br.com.creditcontract.domain.event.CreditContractBlocked;
 import br.com.creditcontract.domain.event.CreditContractUnblocked;
+import br.com.creditcontract.domain.event.CreditContractCancelled;
 import br.com.creditcontract.domain.event.CreditAnalysisApproved;
 import br.com.creditcontract.domain.event.CreditAnalysisRejected;
 import br.com.creditcontract.domain.event.EventContext;
@@ -262,6 +264,58 @@ class CreditContractTest {
 				() -> contract.unblock("   ", UUID.randomUUID()));
 		assertThrows(IllegalArgumentException.class,
 				() -> contract.unblock("x".repeat(256), UUID.randomUUID()));
+	}
+
+	@Test
+	void shouldAllowClientToCancelOnlyActiveContract() {
+		CreditContract contract = activeContract();
+		UUID correlationId = UUID.randomUUID();
+
+		contract.cancelByClient("Client requested account closure", correlationId);
+
+		assertEquals(ContractStatus.CANCELLED, contract.getStatus());
+		CreditContractCancelled event = assertInstanceOf(
+				CreditContractCancelled.class, contract.getDomainEvents().getLast());
+		assertEquals(ContractStatus.ACTIVE, event.previousStatus());
+		assertEquals(CancellationOrigin.CLIENT_REQUEST, event.origin());
+		assertEquals(correlationId, event.correlationId());
+	}
+
+	@Test
+	void shouldRejectClientCancellationWhenContractIsBlocked() {
+		CreditContract contract = activeContract();
+		contract.block("Payment overdue", UUID.randomUUID());
+		assertThrows(InvalidContractTransitionException.class,
+				() -> contract.cancelByClient("Client request", UUID.randomUUID()));
+	}
+
+	@Test
+	void shouldAllowLegalCancellationFromActiveOrBlocked() {
+		CreditContract active = activeContract();
+		active.cancelForLegalReason("Court order", UUID.randomUUID());
+		assertEquals(ContractStatus.CANCELLED, active.getStatus());
+
+		CreditContract blocked = activeContract();
+		blocked.block("Payment overdue", UUID.randomUUID());
+		blocked.cancelForLegalReason("Legal department request", UUID.randomUUID());
+		CreditContractCancelled event = assertInstanceOf(
+				CreditContractCancelled.class, blocked.getDomainEvents().getLast());
+		assertEquals(ContractStatus.BLOCKED, event.previousStatus());
+		assertEquals(CancellationOrigin.LEGAL_REQUEST, event.origin());
+	}
+
+	@Test
+	void shouldAllowExpirationCancellationOnlyWhenBlocked() {
+		CreditContract blocked = activeContract();
+		blocked.block("Payment overdue", UUID.randomUUID());
+		blocked.cancelAfterBlockedExpiration("Regularization period elapsed", UUID.randomUUID());
+		CreditContractCancelled event = assertInstanceOf(
+				CreditContractCancelled.class, blocked.getDomainEvents().getLast());
+		assertEquals(CancellationOrigin.BLOCKED_EXPIRATION, event.origin());
+
+		assertThrows(InvalidContractTransitionException.class,
+				() -> activeContract().cancelAfterBlockedExpiration(
+						"Regularization period elapsed", UUID.randomUUID()));
 	}
 
 	private CreditContract activeContract() {
