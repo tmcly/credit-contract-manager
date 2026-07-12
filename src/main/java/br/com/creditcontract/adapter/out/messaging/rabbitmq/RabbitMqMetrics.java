@@ -25,6 +25,15 @@ public class RabbitMqMetrics {
 				metrics -> metrics.messageCount(RabbitMqTopology.CREDIT_ANALYSIS_DLQ))
 				.tag("queue", RabbitMqTopology.CREDIT_ANALYSIS_DLQ)
 				.register(meterRegistry);
+		Gauge.builder("credit_contract.rabbitmq.queue.depth", this,
+				metrics -> metrics.messageCount(
+						RabbitMqTopology.CREDIT_CONTRACT_ACTIVATION_REQUESTS_QUEUE))
+				.tag("queue", RabbitMqTopology.CREDIT_CONTRACT_ACTIVATION_REQUESTS_QUEUE)
+				.register(meterRegistry);
+		Gauge.builder("credit_contract.rabbitmq.queue.depth", this,
+				metrics -> metrics.messageCount(RabbitMqTopology.CREDIT_CONTRACT_ACTIVATION_DLQ))
+				.tag("queue", RabbitMqTopology.CREDIT_CONTRACT_ACTIVATION_DLQ)
+				.register(meterRegistry);
 	}
 
 	private double messageCount(String queue) {

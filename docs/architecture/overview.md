@@ -79,7 +79,8 @@ entities.
 Contracts are created as `DRAFT` without a limit. Analysis first moves them to
 `UNDER_REVIEW`, then to `APPROVED` with a positive limit or `REJECTED` without a
 limit. Approval does not activate the credit: the client must explicitly accept
-the contract before a future provisioning flow can move it to `ACTIVE`. Every
+the contract before this application's asynchronous activation consumer moves
+it to `ACTIVE`. Every
 transition is explicit in the aggregate and appended to history.
 
 ```mermaid
@@ -89,7 +90,7 @@ stateDiagram-v2
     UNDER_REVIEW --> APPROVED: approveCreditAnalysis(limit)
     UNDER_REVIEW --> REJECTED: rejectCreditAnalysis(reason)
     APPROVED --> ACCEPTED: accept
-    ACCEPTED --> ACTIVE: future provisioning
+    ACCEPTED --> ACTIVE: activation consumer
 ```
 
 ## Persistence boundary
@@ -178,6 +179,7 @@ sequenceDiagram
     participant MQ as RabbitMQ
     participant Worker as Analysis Consumer
     participant Engine as Credit Analysis Stub
+    participant Activator as Activation Consumer
 
     Client->>API: POST /api/contracts
     API->>DB: Save DRAFT without limit + CreditContractCreated
@@ -198,6 +200,8 @@ sequenceDiagram
     Client->>API: POST /api/contracts/{id}/acceptance
     API->>DB: ACCEPTED + history + CreditContractAccepted
     DB->>MQ: Relay credit-contract.accepted.v1
+    MQ->>Activator: Deliver activation request
+    Activator->>DB: ACTIVE + history + CreditContractActivated
 ```
 
 The consumer uses two database transactions around the analysis provider. This
@@ -208,10 +212,13 @@ client-registry and analysis integrations remain deterministic local substitutes
 
 `CreditAnalysisApproved` can notify external channels that an offer is ready.
 Client acceptance is a separate synchronous command and emits
-`CreditContractAccepted` to the durable `credit-contract.activation.requests`
-queue. A future provisioning consumer will own `ACCEPTED -> ACTIVE` and emit the
-separate `CreditContractActivated` fact; that activation is not simulated by the
-current application.
+`CreditContractAccepted` to the durable `credit-contract.activation.requests.v2`
+queue. This application's activation consumer owns `ACCEPTED -> ACTIVE`, stores
+the accepted event in the inbox, and emits the separate
+`CreditContractActivated` fact atomically through the outbox. Exhausted
+activation failures are routed to a dedicated dead-letter queue.
+The consumer also drains the legacy unversioned queue so existing local brokers
+can migrate without deleting queued acceptance events.
 
 ## Transactional outbox
 
