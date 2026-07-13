@@ -367,6 +367,19 @@ logs, and Micrometer metrics while preserving at-least-once delivery.
 See [the roadmap](../roadmap.md) for the implementation sequence and
 [the ADR index](decisions/README.md) for decision rationale.
 
+## Continuous integration
+
+GitHub Actions runs `./mvnw -B clean test` with Temurin Java 21 on every pull
+request targeting `master` and after changes reach `master`. The standard Ubuntu
+runner provides Docker, so the existing Testcontainers suite creates ephemeral
+PostgreSQL and RabbitMQ instances without maintaining separate CI-only service
+definitions.
+
+The workflow grants only read access to repository contents, caches Maven
+dependencies, cancels superseded runs for the same pull request, and limits the
+job to 15 minutes. It validates integration; it does not deploy the application
+or change the runtime architecture.
+
 ## Local observability
 
 ```mermaid
