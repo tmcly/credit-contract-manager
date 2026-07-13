@@ -36,6 +36,12 @@ Application use cases orchestrate the domain and depend on output-port
 interfaces. Inbound and outbound adapters translate external concerns at the
 system boundary.
 
+The REST adapter also owns the generated OpenAPI 3.1 contract. Controller and
+transport annotations describe operations, lifecycle preconditions, parameters,
+examples, and HTTP outcomes without leaking documentation concerns into the
+application or domain layers. A focused MVC test generates `/v3/api-docs` and
+asserts that public paths, examples, and RFC 7807 error schemas remain present.
+
 ## Main packages
 
 ```text

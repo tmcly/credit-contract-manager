@@ -153,6 +153,7 @@ The environment exposes:
 | --- | --- | --- |
 | API | <http://localhost:8080> | none |
 | Swagger UI | <http://localhost:8080/swagger-ui/index.html> | none |
+| OpenAPI JSON | <http://localhost:8080/v3/api-docs> | none |
 | RabbitMQ Management | <http://localhost:15672> | `credit_contract` / `credit_contract` |
 | Prometheus | <http://localhost:9090> | none |
 | Grafana | <http://localhost:3000> | `admin` / `admin` |
@@ -166,6 +167,12 @@ The credentials above are development defaults only. Stop the environment with
 All business endpoints accept an optional UUID `X-Correlation-ID` header and
 return the effective value in the response. The examples use a valid CPF that
 the deterministic local analysis stub approves.
+
+For guided exploration, open Swagger UI and use **Try it out**. The generated
+OpenAPI 3.1 contract groups commands, queries, and operational endpoints; every
+business operation describes its lifecycle rules, asynchronous behavior,
+parameters, example payloads, success responses, and RFC 7807 error responses.
+The examples below remain useful as a linear end-to-end demonstration.
 
 ### 1. Create a contract
 
@@ -320,8 +327,10 @@ returns `404`, including when its audit collection would otherwise be empty.
 | `GET` | `/health` | Lightweight application health check |
 | `GET` | `/actuator/health` | Detailed infrastructure health |
 
-The complete interactive API contract is available in Swagger UI after the
-application starts.
+The complete interactive API contract is available in
+[Swagger UI](http://localhost:8080/swagger-ui/index.html) after the application
+starts. Tooling can consume the same contract as JSON from
+[`/v3/api-docs`](http://localhost:8080/v3/api-docs).
 
 ## Events and reliability
 
@@ -419,6 +428,6 @@ The repository keeps implementation context close to the code:
   follow-up backlog;
 - [Agent guide](AGENTS.md) defines repository conventions and verification.
 
-The next candidate capabilities are optimistic-lock conflict handling, CI, API
-security, and richer OpenAPI examples. The roadmap remains the
-source of truth for sequencing them.
+The next candidate capabilities are GitHub Actions CI, optimistic-lock conflict
+handling, API security, and stronger legal acceptance evidence. The roadmap
+remains the source of truth for sequencing them.

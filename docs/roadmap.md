@@ -555,16 +555,84 @@ their lifecycle and limit-change audits without loading unbounded aggregates.
 - Flyway indexes, PostgreSQL integration tests, controller tests, README,
   architecture, ADRs, and this roadmap describe the implemented behavior.
 
+## Phase 14: Add continuous integration with GitHub Actions
+
+Status: planned.
+
+### Goal
+
+Run the same Java 21 unit and integration checks automatically for every pull
+request and protected-branch update, so repository quality does not depend on a
+developer remembering to execute the suite locally.
+
+## Phase 15: Return explicit optimistic-lock conflicts
+
+Status: planned.
+
+### Goal
+
+Translate concurrent aggregate updates detected by the existing JPA version
+column into a stable `409 Conflict` API contract with focused concurrency tests.
+
+## Phase 16: Authenticate and authorize API callers
+
+Status: planned.
+
+### Goal
+
+Validate caller identity and enforce permissions appropriate to client,
+operations, collection, and legal actions without moving authorization rules
+into the domain model.
+
+## Phase 17: Preserve stronger client-acceptance evidence
+
+Status: planned.
+
+### Goal
+
+Persist the accepted terms version and the minimum legally/audit-relevant
+request evidence required by a future production policy.
+
+## Phase 18: Enrich the executable OpenAPI contract ✅
+
+Status: completed.
+
+Implementation note: the Springdoc contract remains owned by the inbound REST
+adapter. Documentation-only schemas and examples describe the wire format but
+do not enter application or domain dependencies.
+
+Suggested branch: `docs/enrich-openapi-contracts`.
+
+### Goal
+
+Let a developer, reviewer, or recruiter understand and exercise the API from
+Swagger UI without first reverse-engineering controllers or reading every
+architecture document.
+
+### Scope and acceptance criteria
+
+- OpenAPI metadata explains the product, asynchronous flows, and repository.
+- Commands, queries, and operational endpoints appear in distinct tags.
+- Every public business endpoint has a stable operation ID, summary, business
+  description, parameter documentation, and applicable HTTP outcomes.
+- Request and success examples use coherent CPF, UUID, contract number, status,
+  monetary, pagination, history, and reanalysis data.
+- RFC 7807 responses expose a reusable `ApiProblem` schema and examples for
+  validation, missing contracts, invalid transitions, and cooldown responses.
+- Content types distinguish JSON resources from `application/problem+json`.
+- Transport DTO schemas document formats, nullability, enums, limits, and
+  privacy-relevant omissions.
+- A focused MVC test generates `/v3/api-docs` and protects paths, operation IDs,
+  examples, and error schemas from silent regression.
+- README, architecture overview, and this roadmap describe Swagger UI and the
+  machine-readable contract.
+
 ## Follow-up backlog
 
 These items are valuable but should not interrupt the ordered phases above
 unless a concrete requirement changes priority:
 
-- optimistic-lock conflict handling;
-- GitHub Actions CI with unit and integration tests;
-- API authentication and authorization;
 - broader LGPD, log-retention, and observability-access review;
-- richer OpenAPI examples and error contracts;
 - production secrets and environment-specific configuration;
 - distributed tracing;
 - Kafka evaluation only if replay, retention, or stream-processing requirements
