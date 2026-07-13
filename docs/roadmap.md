@@ -555,15 +555,36 @@ their lifecycle and limit-change audits without loading unbounded aggregates.
 - Flyway indexes, PostgreSQL integration tests, controller tests, README,
   architecture, ADRs, and this roadmap describe the implemented behavior.
 
-## Phase 14: Add continuous integration with GitHub Actions
+## Phase 14: Add continuous integration with GitHub Actions ✅
 
-Status: planned.
+Status: completed.
+
+Implementation note: one GitHub Actions job runs the same Maven suite used
+locally. Testcontainers owns PostgreSQL and RabbitMQ lifecycle inside the
+standard hosted runner, so CI does not duplicate the Compose environment.
+
+Suggested branch: `chore/add-github-actions-ci`.
 
 ### Goal
 
 Run the same Java 21 unit and integration checks automatically for every pull
 request and protected-branch update, so repository quality does not depend on a
 developer remembering to execute the suite locally.
+
+### Scope and acceptance criteria
+
+- Pull requests targeting `master` and commits on `master` trigger CI.
+- The job uses a standard Ubuntu runner with Temurin Java 21.
+- Maven dependencies are cached while `./mvnw -B clean test` remains the single
+  source of truth for unit, MVC, PostgreSQL, and RabbitMQ tests.
+- The runner's Docker Engine supports the existing Testcontainers suite without
+  long-lived CI services.
+- Workflow permissions are limited to read-only repository contents.
+- Superseded runs for the same pull request are cancelled automatically.
+- A 15-minute timeout prevents a stuck container or dependency download from
+  consuming runner capacity indefinitely.
+- README exposes the current CI status and explains when the workflow runs.
+- The workflow passes its first pull-request execution before merge.
 
 ## Phase 15: Return explicit optimistic-lock conflicts
 

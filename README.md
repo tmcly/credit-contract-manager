@@ -8,6 +8,7 @@ and production-oriented reliability patterns.
 ![Spring Boot 3.5.3](https://img.shields.io/badge/Spring_Boot-3.5.3-6DB33F?logo=springboot&logoColor=white)
 ![PostgreSQL 17](https://img.shields.io/badge/PostgreSQL-17-4169E1?logo=postgresql&logoColor=white)
 ![RabbitMQ 4](https://img.shields.io/badge/RabbitMQ-4-FF6600?logo=rabbitmq&logoColor=white)
+[![CI](https://github.com/tmcly/credit-contract-manager/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/tmcly/credit-contract-manager/actions/workflows/ci.yml)
 
 > [!IMPORTANT]
 > This project demonstrates architecture and business lifecycle design. It is
@@ -382,6 +383,12 @@ The test suite includes domain and use-case unit tests, REST tests, PostgreSQL
 persistence tests, and RabbitMQ/outbox integration tests. Java 21 and a running
 Docker Engine are required because integration tests use Testcontainers.
 
+GitHub Actions executes the same complete suite for every pull request targeting
+`master` and after every commit merged into `master`. The workflow uses a
+standard Ubuntu runner, Temurin Java 21, Maven dependency caching, and the
+runner's Docker Engine for Testcontainers. A newer commit to the same pull
+request cancels its obsolete in-progress run.
+
 ```bash
 ./mvnw clean test
 ```
@@ -428,6 +435,6 @@ The repository keeps implementation context close to the code:
   follow-up backlog;
 - [Agent guide](AGENTS.md) defines repository conventions and verification.
 
-The next candidate capabilities are GitHub Actions CI, optimistic-lock conflict
-handling, API security, and stronger legal acceptance evidence. The roadmap
-remains the source of truth for sequencing them.
+The next candidate capabilities are optimistic-lock conflict handling, API
+security, and stronger legal acceptance evidence. The roadmap remains the
+source of truth for sequencing them.

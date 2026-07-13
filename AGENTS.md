@@ -114,6 +114,10 @@ docker compose up -d --build
 Exercise the affected endpoint or message flow, inspect persisted state when
 relevant, and tear down temporary resources afterward.
 
+GitHub Actions runs the same `./mvnw -B clean test` suite for pull requests and
+updates to `master`. Keep the local and CI commands aligned when changing the
+build or test lifecycle.
+
 ## Definition of done
 
 A change is complete only when:
