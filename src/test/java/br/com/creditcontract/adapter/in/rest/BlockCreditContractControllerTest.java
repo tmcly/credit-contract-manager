@@ -1,5 +1,6 @@
 package br.com.creditcontract.adapter.in.rest;
 
+import br.com.creditcontract.application.exception.ConcurrentCreditContractUpdateException;
 import br.com.creditcontract.application.usecase.BlockCreditContractUseCase;
 import br.com.creditcontract.domain.entity.CreditContract;
 import br.com.creditcontract.domain.enums.ContractStatus;
@@ -90,6 +91,24 @@ class BlockCreditContractControllerTest {
 						.content("{\"reason\":\"Risk request\"}"))
 				.andExpect(status().isConflict())
 				.andExpect(jsonPath("$.type").value("/errors/invalid-contract-transition"));
+	}
+
+	@Test
+	void shouldReturn409WhenContractWasUpdatedConcurrently() throws Exception {
+		UUID id = UUID.randomUUID();
+		when(useCase.execute(eq(ContractId.from(id)), eq("Risk request"), any()))
+				.thenThrow(new ConcurrentCreditContractUpdateException(
+						ContractId.from(id), new IllegalStateException("simulated persistence conflict")));
+
+		mockMvc.perform(post("/api/contracts/{id}/blocking", id)
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("{\"reason\":\"Risk request\"}"))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.type").value("/errors/concurrent-contract-update"))
+				.andExpect(jsonPath("$.title").value("Concurrent contract update"))
+				.andExpect(jsonPath("$.status").value(409))
+				.andExpect(jsonPath("$.detail").value(
+						"The credit contract was modified by another operation. Fetch its current state before retrying."));
 	}
 
 	private CreditContract contractIn(UUID id, ContractStatus status) {

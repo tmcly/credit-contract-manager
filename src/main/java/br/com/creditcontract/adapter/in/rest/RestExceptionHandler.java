@@ -1,6 +1,7 @@
 package br.com.creditcontract.adapter.in.rest;
 
 import br.com.creditcontract.application.exception.ClientNotFoundException;
+import br.com.creditcontract.application.exception.ConcurrentCreditContractUpdateException;
 import br.com.creditcontract.application.exception.CreditContractNotFoundException;
 import br.com.creditcontract.application.exception.InvalidQueryParameterException;
 import br.com.creditcontract.domain.exception.InvalidDocumentNumberException;
@@ -77,6 +78,16 @@ public class RestExceptionHandler {
 				HttpStatus.CONFLICT, exception.getMessage());
 		problem.setTitle("Invalid contract transition");
 		problem.setType(URI.create("/errors/invalid-contract-transition"));
+		return problem;
+	}
+
+	@ExceptionHandler(ConcurrentCreditContractUpdateException.class)
+	ProblemDetail handleConcurrentContractUpdate(ConcurrentCreditContractUpdateException exception) {
+		ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+				HttpStatus.CONFLICT,
+				"The credit contract was modified by another operation. Fetch its current state before retrying.");
+		problem.setTitle("Concurrent contract update");
+		problem.setType(URI.create("/errors/concurrent-contract-update"));
 		return problem;
 	}
 

@@ -129,6 +129,14 @@ concerns from leaking into the domain.
 The mapper supports both writes and deliberate JPA-to-domain rehydration,
 including status history and optimistic version.
 
+Concurrent commands use optimistic locking through the JPA entity's `@Version`
+column. When two transactions load the same version, exactly one can commit;
+the persistence adapter translates the losing Spring/JPA failure into an
+application error. REST exposes it as RFC 7807 `409 Conflict` with type
+`/errors/concurrent-contract-update`. The API does not retry automatically
+because the winning transition may have changed whether the losing command is
+still legal. The caller must fetch the current state before deciding to retry.
+
 Collection reads use a separate `CreditContractQueryPort`. Its JPA adapter
 selects lightweight summary or audit projections and applies filters,
 pagination, and stable ordering in PostgreSQL. This avoids rehydrating the

@@ -97,6 +97,8 @@ class OpenApiDocumentationTest {
 						.value("DRAFT"))
 				.andExpect(jsonPath("$.paths['/api/contracts/{id}/blocking'].post.responses['409'].content['application/problem+json'].schema['$ref']")
 						.value("#/components/schemas/ApiProblem"))
+				.andExpect(jsonPath("$.paths['/api/contracts/{id}/blocking'].post.responses['409'].content['application/problem+json'].examples['Concurrent update'].value.type")
+						.value("/errors/concurrent-contract-update"))
 				.andExpect(jsonPath("$.paths['/api/contracts/{id}/credit-reanalysis'].post.responses['429'].content['application/problem+json'].example.nextEligibleAt")
 						.value("2026-08-12T10:20:00"))
 				.andExpect(jsonPath("$.components.schemas.ApiProblem.properties.nextEligibleAt").exists())
