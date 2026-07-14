@@ -54,9 +54,12 @@ public class AcceptCreditContractController {
 			@ApiResponse(responseCode = "404", description = "Contract does not exist.",
 					content = @Content(mediaType = "application/problem+json", schema = @Schema(implementation = ApiProblemResponse.class),
 							examples = @ExampleObject(value = OpenApiExamples.CONTRACT_NOT_FOUND_PROBLEM))),
-			@ApiResponse(responseCode = "409", description = "Contract is not APPROVED and has not already been accepted.",
+			@ApiResponse(responseCode = "409", description = "Contract state rejects acceptance or a concurrent command changed it.",
 					content = @Content(mediaType = "application/problem+json", schema = @Schema(implementation = ApiProblemResponse.class),
-							examples = @ExampleObject(value = OpenApiExamples.ACCEPTANCE_CONFLICT_PROBLEM)))
+							examples = {
+									@ExampleObject(name = "Invalid transition", value = OpenApiExamples.ACCEPTANCE_CONFLICT_PROBLEM),
+									@ExampleObject(name = "Concurrent update", value = OpenApiExamples.CONCURRENT_UPDATE_PROBLEM)
+							}))
 	})
 	@Parameter(
 			name = HttpRequestLoggingFilter.CORRELATION_ID_HEADER,

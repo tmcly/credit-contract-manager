@@ -51,6 +51,7 @@ The current implementation includes:
   30-day cooldown and durable request audit;
 - deterministic reanalysis outcomes with explicit previous and resulting limits;
 - paginated contract search plus status-transition and credit-reanalysis audit APIs;
+- explicit `409 Conflict` responses when concurrent commands race on one contract;
 - transactional outbox and inbox-based idempotency;
 - bounded retries, dead-letter queues, correlation IDs, metrics, and logs;
 - deterministic local fakes and PostgreSQL/RabbitMQ integration tests.
@@ -328,6 +329,12 @@ returns `404`, including when its audit collection would otherwise be empty.
 | `GET` | `/health` | Lightweight application health check |
 | `GET` | `/actuator/health` | Detailed infrastructure health |
 
+Concurrent commands are protected by the contract's optimistic version. If
+another transaction commits first, the losing request returns RFC 7807
+`409 Conflict` with type `/errors/concurrent-contract-update`. Clients should
+fetch the current contract state before deciding whether the command remains
+valid; the API does not retry lifecycle transitions automatically.
+
 The complete interactive API contract is available in
 [Swagger UI](http://localhost:8080/swagger-ui/index.html) after the application
 starts. Tooling can consume the same contract as JSON from
@@ -435,6 +442,5 @@ The repository keeps implementation context close to the code:
   follow-up backlog;
 - [Agent guide](AGENTS.md) defines repository conventions and verification.
 
-The next candidate capabilities are optimistic-lock conflict handling, API
-security, and stronger legal acceptance evidence. The roadmap remains the
-source of truth for sequencing them.
+The next candidate capabilities are API security and stronger legal acceptance
+evidence. The roadmap remains the source of truth for sequencing them.

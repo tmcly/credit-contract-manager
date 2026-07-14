@@ -50,6 +50,8 @@ Already implemented:
   inbox idempotency, and before/after limit events.
 - paginated contract search and independently paginated status and reanalysis
   audit APIs backed by lightweight read projections.
+- stable RFC 7807 `409 Conflict` responses for concurrent aggregate updates,
+  backed by PostgreSQL optimistic-lock integration coverage.
 
 ## Phase 1: Generate contract numbers with PostgreSQL ✅
 
@@ -586,14 +588,32 @@ developer remembering to execute the suite locally.
 - README exposes the current CI status and explains when the workflow runs.
 - The workflow passes its first pull-request execution before merge.
 
-## Phase 15: Return explicit optimistic-lock conflicts
+## Phase 15: Return explicit optimistic-lock conflicts ✅
 
-Status: planned.
+Status: completed.
+
+Implementation note: ADR 017 keeps the existing JPA `@Version` strategy,
+translates Spring persistence failures at the outbound adapter boundary, and
+rejects automatic retries because the winning transition can change whether
+the losing command remains legal.
 
 ### Goal
 
 Translate concurrent aggregate updates detected by the existing JPA version
 column into a stable `409 Conflict` API contract with focused concurrency tests.
+
+### Scope and acceptance criteria
+
+- Two PostgreSQL transactions loading the same contract version cannot both
+  commit competing aggregate changes.
+- The losing transition, history entry, and outbox event roll back atomically.
+- Spring and Hibernate concurrency exceptions do not leak into application or
+  domain code.
+- REST returns RFC 7807 `409 Conflict` with stable type
+  `/errors/concurrent-contract-update`.
+- Swagger documents concurrent conflicts for contract-changing endpoints.
+- Callers are instructed to reload current state; lifecycle commands are not
+  retried automatically.
 
 ## Phase 16: Authenticate and authorize API callers
 

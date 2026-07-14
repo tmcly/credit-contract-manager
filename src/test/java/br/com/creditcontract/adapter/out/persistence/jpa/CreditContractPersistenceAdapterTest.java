@@ -2,20 +2,21 @@ package br.com.creditcontract.adapter.out.persistence.jpa;
 
 import br.com.creditcontract.adapter.out.persistence.outbox.OutboxEventPersistenceAdapter;
 import br.com.creditcontract.adapter.out.persistence.outbox.OutboxEventSerializer;
+import br.com.creditcontract.application.exception.ConcurrentCreditContractUpdateException;
 import br.com.creditcontract.application.port.out.CreditContractRepository;
 import br.com.creditcontract.domain.entity.CreditContract;
 import br.com.creditcontract.domain.enums.ContractStatus;
-import br.com.creditcontract.domain.event.CreditContractCreated;
 import br.com.creditcontract.domain.event.CreditContractAccepted;
 import br.com.creditcontract.domain.event.CreditContractBlocked;
-import br.com.creditcontract.domain.event.CreditContractUnblocked;
 import br.com.creditcontract.domain.event.CreditContractCancelled;
+import br.com.creditcontract.domain.event.CreditContractCreated;
+import br.com.creditcontract.domain.event.CreditContractUnblocked;
 import br.com.creditcontract.domain.valueobject.Address;
 import br.com.creditcontract.domain.valueobject.Client;
 import br.com.creditcontract.domain.valueobject.ContractId;
 import br.com.creditcontract.domain.valueobject.DocumentNumber;
-import br.com.creditcontract.domain.valueobject.ZipCode;
 import br.com.creditcontract.domain.valueobject.MonetaryAmount;
+import br.com.creditcontract.domain.valueobject.ZipCode;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration;
@@ -25,20 +26,31 @@ import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-import java.util.Map;
-import java.util.List;
-import java.util.UUID;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -72,6 +84,9 @@ class CreditContractPersistenceAdapterTest {
 
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
+
+	@Autowired
+	private PlatformTransactionManager transactionManager;
 
 	@Test
 	@Transactional(propagation = Propagation.NOT_SUPPORTED)
@@ -276,6 +291,88 @@ class CreditContractPersistenceAdapterTest {
 		assertEquals("CreditContractCancelled", outbox.get("event_type"));
 		assertTrue(outbox.get("payload").toString().contains("BLOCKED_EXPIRATION"));
 		assertEquals(ContractStatus.BLOCKED, repository.findById(recent.getId()).orElseThrow().getStatus());
+	}
+
+	@Test
+	@Transactional(propagation = Propagation.NOT_SUPPORTED)
+	void shouldRejectOneOfTwoConcurrentContractUpdatesWithoutPartialWrites() throws Exception {
+		CreditContract contract = persistedContract(
+				"CT-2026-000803", ContractStatus.ACTIVE, LocalDateTime.now());
+		repository.save(contract);
+
+		CountDownLatch bothLoaded = new CountDownLatch(2);
+		CountDownLatch startUpdates = new CountDownLatch(1);
+		ExecutorService executor = Executors.newFixedThreadPool(2);
+		try {
+			Future<RuntimeException> blocking = executor.submit(() -> runConcurrentUpdate(
+					contract.getId(), bothLoaded, startUpdates,
+					loaded -> loaded.block("Payment overdue", UUID.fromString(
+							"10000000-0000-0000-0000-000000000001"))));
+			Future<RuntimeException> cancellation = executor.submit(() -> runConcurrentUpdate(
+					contract.getId(), bothLoaded, startUpdates,
+					loaded -> loaded.cancelForLegalReason("Legal cancellation", UUID.fromString(
+							"20000000-0000-0000-0000-000000000002"))));
+
+			assertTrue(bothLoaded.await(10, TimeUnit.SECONDS),
+					"both transactions should load the same contract version");
+			startUpdates.countDown();
+
+			RuntimeException blockingFailure = blocking.get(20, TimeUnit.SECONDS);
+			RuntimeException cancellationFailure = cancellation.get(20, TimeUnit.SECONDS);
+			List<RuntimeException> failures = Stream.of(blockingFailure, cancellationFailure)
+					.filter(Objects::nonNull)
+					.toList();
+
+			assertEquals(1, failures.size());
+			assertInstanceOf(ConcurrentCreditContractUpdateException.class, failures.getFirst());
+		} finally {
+			startUpdates.countDown();
+			executor.shutdownNow();
+		}
+
+		CreditContract persisted = repository.findById(contract.getId()).orElseThrow();
+		assertTrue(persisted.getStatus() == ContractStatus.BLOCKED
+				|| persisted.getStatus() == ContractStatus.CANCELLED);
+		assertEquals(1, jdbcTemplate.queryForObject(
+				"""
+				SELECT COUNT(*) FROM contract_status_history
+				WHERE contract_id = ? AND previous_status IS NOT NULL
+				""",
+				Integer.class, contract.getId().value()));
+		assertEquals(1, jdbcTemplate.queryForObject(
+				"SELECT COUNT(*) FROM outbox_events WHERE aggregate_id = ?",
+				Integer.class, contract.getId().value()));
+	}
+
+	private RuntimeException runConcurrentUpdate(
+			ContractId contractId,
+			CountDownLatch bothLoaded,
+			CountDownLatch startUpdates,
+			Consumer<CreditContract> update) {
+		TransactionTemplate transactions = new TransactionTemplate(transactionManager);
+		try {
+			transactions.executeWithoutResult(status -> {
+				CreditContract loaded = repository.findById(contractId).orElseThrow();
+				bothLoaded.countDown();
+				await(startUpdates);
+				update.accept(loaded);
+				repository.save(loaded);
+			});
+			return null;
+		} catch (RuntimeException exception) {
+			return exception;
+		}
+	}
+
+	private void await(CountDownLatch latch) {
+		try {
+			if (!latch.await(10, TimeUnit.SECONDS)) {
+				throw new IllegalStateException("timed out waiting to start concurrent updates");
+			}
+		} catch (InterruptedException exception) {
+			Thread.currentThread().interrupt();
+			throw new IllegalStateException("interrupted while waiting to start concurrent updates", exception);
+		}
 	}
 
 	private CreditContract persistedContract(

@@ -21,6 +21,7 @@ of choices that should survive individual tasks and conversations.
 | [014](014-manual-and-expiring-contract-cancellation.md) | Accepted, implemented | Cancel manually by requester rules or automatically after 90 blocked days |
 | [015](015-asynchronous-credit-reanalysis.md) | Accepted, implemented | Request active-contract credit reanalysis asynchronously with cooldown and audit |
 | [016](016-paginated-contract-read-side.md) | Accepted, implemented | Paginated read projections for contract search and audit trails |
+| [017](017-optimistic-concurrency-conflicts.md) | Accepted, implemented | Optimistic concurrency conflicts exposed as stable HTTP 409 responses |
 
 When a decision changes, add a new ADR that supersedes the old one. Do not
 rewrite history in a way that hides why the earlier decision was made.

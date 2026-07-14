@@ -54,9 +54,12 @@ public class BlockCreditContractController {
 			@ApiResponse(responseCode = "404", description = "Contract does not exist.",
 					content = @Content(mediaType = "application/problem+json", schema = @Schema(implementation = ApiProblemResponse.class),
 							examples = @ExampleObject(value = OpenApiExamples.CONTRACT_NOT_FOUND_PROBLEM))),
-			@ApiResponse(responseCode = "409", description = "Contract is not ACTIVE.",
+			@ApiResponse(responseCode = "409", description = "Contract is not ACTIVE or a concurrent command changed it.",
 					content = @Content(mediaType = "application/problem+json", schema = @Schema(implementation = ApiProblemResponse.class),
-							examples = @ExampleObject(value = OpenApiExamples.INVALID_TRANSITION_PROBLEM)))
+							examples = {
+									@ExampleObject(name = "Invalid transition", value = OpenApiExamples.INVALID_TRANSITION_PROBLEM),
+									@ExampleObject(name = "Concurrent update", value = OpenApiExamples.CONCURRENT_UPDATE_PROBLEM)
+							}))
 	})
 	@Parameter(
 			name = HttpRequestLoggingFilter.CORRELATION_ID_HEADER,

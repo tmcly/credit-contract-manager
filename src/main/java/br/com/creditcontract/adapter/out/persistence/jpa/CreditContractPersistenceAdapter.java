@@ -1,21 +1,23 @@
 package br.com.creditcontract.adapter.out.persistence.jpa;
 
 import br.com.creditcontract.adapter.out.persistence.outbox.OutboxEventPersistenceAdapter;
+import br.com.creditcontract.application.exception.ConcurrentCreditContractUpdateException;
 import br.com.creditcontract.application.port.out.CreditContractRepository;
 import br.com.creditcontract.domain.entity.CreditContract;
+import br.com.creditcontract.domain.enums.ContractStatus;
 import br.com.creditcontract.domain.event.DomainEvent;
 import br.com.creditcontract.domain.valueobject.ContractId;
-import br.com.creditcontract.domain.enums.ContractStatus;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.time.LocalDateTime;
 
 @Repository
 public class CreditContractPersistenceAdapter implements CreditContractRepository {
@@ -44,7 +46,11 @@ public class CreditContractPersistenceAdapter implements CreditContractRepositor
 				})
 				.orElseGet(() -> mapper.toJpaEntity(contract));
 
-		repository.saveAndFlush(entity);
+		try {
+			repository.saveAndFlush(entity);
+		} catch (OptimisticLockingFailureException exception) {
+			throw new ConcurrentCreditContractUpdateException(contract.getId(), exception);
+		}
 		outboxEventPersistenceAdapter.persist(eventsToPersist);
 		clearPersistedEventsAfterCommit(contract, eventsToPersist);
 	}

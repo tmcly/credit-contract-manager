@@ -244,6 +244,15 @@ final class OpenApiExamples {
 			}
 			""";
 
+	static final String CONCURRENT_UPDATE_PROBLEM = """
+			{
+			  "type": "/errors/concurrent-contract-update",
+			  "title": "Concurrent contract update",
+			  "status": 409,
+			  "detail": "The credit contract was modified by another operation. Fetch its current state before retrying."
+			}
+			""";
+
 	static final String ACCEPTANCE_CONFLICT_PROBLEM = """
 			{
 			  "type": "/errors/invalid-contract-transition",

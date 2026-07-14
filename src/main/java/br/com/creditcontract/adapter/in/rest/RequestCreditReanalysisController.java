@@ -55,9 +55,12 @@ public class RequestCreditReanalysisController {
 			@ApiResponse(responseCode = "404", description = "Contract does not exist.",
 					content = @Content(mediaType = "application/problem+json", schema = @Schema(implementation = ApiProblemResponse.class),
 							examples = @ExampleObject(value = OpenApiExamples.CONTRACT_NOT_FOUND_PROBLEM))),
-			@ApiResponse(responseCode = "409", description = "Contract is not ACTIVE or already has a pending reanalysis.",
+			@ApiResponse(responseCode = "409", description = "Reanalysis is not allowed or a concurrent command changed the contract.",
 					content = @Content(mediaType = "application/problem+json", schema = @Schema(implementation = ApiProblemResponse.class),
-							examples = @ExampleObject(value = OpenApiExamples.REANALYSIS_NOT_ALLOWED_PROBLEM))),
+							examples = {
+									@ExampleObject(name = "Reanalysis not allowed", value = OpenApiExamples.REANALYSIS_NOT_ALLOWED_PROBLEM),
+									@ExampleObject(name = "Concurrent update", value = OpenApiExamples.CONCURRENT_UPDATE_PROBLEM)
+							})),
 			@ApiResponse(responseCode = "429", description = "The 30-day request cooldown is still active.",
 					content = @Content(mediaType = "application/problem+json", schema = @Schema(implementation = ApiProblemResponse.class),
 							examples = @ExampleObject(value = OpenApiExamples.REANALYSIS_COOLDOWN_PROBLEM)))
